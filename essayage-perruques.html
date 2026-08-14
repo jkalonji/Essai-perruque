@@ -257,6 +257,7 @@ let imgs={}, running=false, lastVT=-1, lostAt=0;
 let userScale=1, userTop=0, userSide=0;
 let sm=null; // pose lissée
 let segmenter=null, segBusy=false, lastSegVT=-1, hairMask=null; // suppression des vrais cheveux
+const DEBUG = new URLSearchParams(location.search).has('debug');
 
 /* ------------------------------------------------------------- assets */
 function loadImg(src){return new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=src;});}
@@ -608,6 +609,13 @@ function loop(){
   if(tracking){
     if(!sm) a=0;
     else if(lostAt) a=Math.max(0, 1-(performance.now()-lostAt-500)/500);
+  }
+  if(DEBUG){
+    if(!sm) a=1; // force l'affichage avec la pose de secours même sans visage détecté
+    ctx.save();
+    ctx.fillStyle='#0f0'; ctx.font='16px monospace';
+    ctx.fillText('tracking='+tracking+' sm='+(sm?'oui':'non')+' three='+(three?'oui':'non'), 16, 28);
+    ctx.restore();
   }
   if(a>0) render3D(Math.min(a,1));
 }
