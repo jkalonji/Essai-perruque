@@ -518,6 +518,8 @@ function init3D(){
     three={renderer, scene, camera, meshes, lastT:0};
   }catch(e){
     three=null; // pas de WebGL disponible : pas de perruque 3D pour cette session
+    console.error('init3D a échoué :', e);
+    say('Rendu 3D indisponible sur cet appareil (voir la console)', 6000);
   }
 }
 
@@ -540,38 +542,45 @@ function updateHairPose(target, dt){
   return hairPose;
 }
 
+let render3DFailed=false;
 function render3D(alpha){
-  if(!three) return;
-  const cw=canvas.width, ch=canvas.height;
-  if(three.renderer.domElement.width!==cw || three.renderer.domElement.height!==ch){
-    three.renderer.setSize(cw, ch, false);
-    three.camera.right=cw; three.camera.bottom=ch;
-    three.camera.updateProjectionMatrix();
-  }
-  let p;
-  if(sm && tracking) p=sm;
-  else p={x:cw/2, y:ch*0.22, w:Math.min(cw,ch)*0.34, ang:0, yaw:0};
+  if(!three || render3DFailed) return;
+  try{
+    const cw=canvas.width, ch=canvas.height;
+    if(three.renderer.domElement.width!==cw || three.renderer.domElement.height!==ch){
+      three.renderer.setSize(cw, ch, false);
+      three.camera.right=cw; three.camera.bottom=ch;
+      three.camera.updateProjectionMatrix();
+    }
+    let p;
+    if(sm && tracking) p=sm;
+    else p={x:cw/2, y:ch*0.22, w:Math.min(cw,ch)*0.34, ang:0, yaw:0};
 
-  const now=performance.now();
-  const dt=Math.min((now-(three.lastT||now))/1000, 0.05);
-  three.lastT=now;
-  const hp=updateHairPose(p, dt);
+    const now=performance.now();
+    const dt=Math.min((now-(three.lastT||now))/1000, 0.05);
+    three.lastT=now;
+    const hp=updateHairPose(p, dt);
 
-  const wig=WIGS[current];
-  Object.keys(three.meshes).forEach(id=>{ three.meshes[id].visible=(id===wig.id); });
-  const mesh=three.meshes[wig.id];
-  if(mesh){
-    const s=(hp.w*WIDTH_RATIO*userScale)/WIG_W;
-    mesh.position.set(hp.x + userSide*hp.w, hp.y + userTop*hp.w, 0);
-    mesh.scale.setScalar(s);
-    mesh.rotation.z = hp.ang;         // roulis (tête penchée épaule)
-    mesh.rotation.y = -hp.yaw*1.7;    // vraie rotation 3D (tête tournée) — signe à vérifier à l'écran
+    const wig=WIGS[current];
+    Object.keys(three.meshes).forEach(id=>{ three.meshes[id].visible=(id===wig.id); });
+    const mesh=three.meshes[wig.id];
+    if(mesh){
+      const s=(hp.w*WIDTH_RATIO*userScale)/WIG_W;
+      mesh.position.set(hp.x + userSide*hp.w, hp.y + userTop*hp.w, 0);
+      mesh.scale.setScalar(s);
+      mesh.rotation.z = hp.ang;         // roulis (tête penchée épaule)
+      mesh.rotation.y = -hp.yaw*1.7;    // vraie rotation 3D (tête tournée) — signe à vérifier à l'écran
+    }
+    three.renderer.render(three.scene, three.camera);
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.drawImage(three.renderer.domElement, 0, 0);
+    ctx.restore();
+  }catch(e){
+    render3DFailed=true; // évite de spammer la console à 60 img/s
+    console.error('render3D a échoué :', e);
+    say('Rendu 3D interrompu (voir la console)', 6000);
   }
-  three.renderer.render(three.scene, three.camera);
-  ctx.save();
-  ctx.globalAlpha=alpha;
-  ctx.drawImage(three.renderer.domElement, 0, 0);
-  ctx.restore();
 }
 
 function loop(){
