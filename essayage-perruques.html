@@ -370,7 +370,7 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 
 function pose(L){
   const vw=video.videoWidth, vh=video.videoHeight;
-  const a=P(L,234,vw,vh), b=P(L,454,vw,vh);
+  const a=P(L,454,vw,vh), b=P(L,234,vw,vh);
   const fore=P(L,10,vw,vh), nose=P(L,4,vw,vh);
   const w=Math.hypot(b.x-a.x, b.y-a.y);
   let ang=Math.atan2(b.y-a.y, b.x-a.x);
