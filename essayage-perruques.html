@@ -252,6 +252,7 @@ let stream=null, landmarker=null, tracking=false, current=0;
 let imgs={}, running=false, lastVT=-1, lostAt=0;
 let userScale=1, userTop=0, userSide=0;
 let sm=null; // pose lissée
+let segmenter=null, segBusy=false, lastSegVT=-1, hairMask=null; // suppression des vrais cheveux
 
 /* ------------------------------------------------------------- assets */
 function loadImg(src){return new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=src;});}
@@ -329,11 +330,36 @@ async function initTracking(){
     landmarker = await make('GPU').catch(()=>make('CPU'));
     tracking=true;
     say('Placez votre visage dans le cadre', 2600);
+    initSegmenter(files); // en tâche de fond — n'empêche pas le suivi de démarrer
   }catch(e){
     tracking=false;
     $('#sideRow').hidden=false;
     say('Suivi indisponible — ajustez la perruque à la main', 6000);
   }
+}
+
+/* atténue les vrais cheveux visibles pour que la perruque les remplace
+   au lieu de se superposer dessus */
+async function initSegmenter(files){
+  try{
+    const {ImageSegmenter} =
+      await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+    const MODEL='https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite';
+    const make = d => ImageSegmenter.createFromOptions(files,{
+      baseOptions:{modelAssetPath:MODEL, delegate:d},
+      outputCategoryMask:true, outputConfidenceMasks:false, runningMode:'VIDEO'
+    });
+    segmenter = await make('GPU').catch(()=>make('CPU'));
+  }catch(e){
+    segmenter=null; // pas bloquant : la perruque continue de fonctionner sans suppression
+  }
+}
+function onSeg(result){
+  segBusy=false;
+  const m=result.categoryMask;
+  if(!m) return;
+  hairMask={data:m.getAsUint8Array(), w:m.width, h:m.height};
+  m.close();
 }
 
 let sayTimer=null;
@@ -385,6 +411,32 @@ function pose(L){
   return sm;
 }
 
+/* assombrit les pixels identifiés comme "cheveux" (classe 1 du modèle
+   selfie_multiclass) avant de dessiner la perruque par-dessus — les
+   vrais cheveux qui dépassent du contour de la perruque se voient
+   nettement moins au lieu de rester en pleine lumière */
+let maskCv=null, maskCtx=null;
+function drawHairSuppression(){
+  if(!hairMask) return;
+  const {data,w,h}=hairMask;
+  if(!maskCv){ maskCv=document.createElement('canvas'); maskCtx=maskCv.getContext('2d'); }
+  if(maskCv.width!==w||maskCv.height!==h){ maskCv.width=w; maskCv.height=h; }
+  const id=maskCtx.createImageData(w,h);
+  for(let i=0;i<w*h;i++){
+    const hair = data[i]===1 ? 255 : 0;
+    id.data[i*4]=20; id.data[i*4+1]=16; id.data[i*4+2]=14; id.data[i*4+3]=hair;
+  }
+  maskCtx.putImageData(id,0,0);
+
+  const cw=canvas.width;
+  ctx.save();
+  ctx.globalAlpha=0.62;
+  ctx.translate(cw,0); ctx.scale(-1,1); // même miroir que la vidéo
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(maskCv, view.dx, view.dy, video.videoWidth*view.s, video.videoHeight*view.s);
+  ctx.restore();
+}
+
 function drawWig(alpha){
   const img=imgs[WIGS[current].id]; if(!img) return;
   const cw=canvas.width, ch=canvas.height;
@@ -417,6 +469,13 @@ function loop(){
       else if(!lostAt) lostAt=performance.now();
     }catch(_){}
   }
+  if(segmenter && !segBusy && video.currentTime!==lastSegVT){
+    lastSegVT=video.currentTime;
+    segBusy=true;
+    try{ segmenter.segmentForVideo(video, performance.now(), onSeg); }
+    catch(_){ segBusy=false; }
+  }
+  drawHairSuppression();
   let a=1;
   if(tracking){
     if(!sm) a=0;
