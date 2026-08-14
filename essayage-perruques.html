@@ -174,6 +174,8 @@ input[type=range]::-moz-range-thumb{
 </style>
 </head>
 <body>
+<div id="dbgLog" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(0,0,0,.8);color:#0f0;font:12px monospace;padding:6px;white-space:pre-wrap;pointer-events:none"></div>
+<div id="dbgLive" style="position:fixed;top:120px;left:0;right:0;z-index:9999;background:rgba(0,0,0,.8);color:#ff0;font:12px monospace;padding:6px;white-space:pre-wrap;pointer-events:none"></div>
 <div id="app">
 
   <section id="intro">
@@ -257,7 +259,9 @@ let imgs={}, running=false, lastVT=-1, lostAt=0;
 let userScale=1, userTop=0, userSide=0;
 let sm=null; // pose lissée
 let segmenter=null, segBusy=false, lastSegVT=-1, hairMask=null; // suppression des vrais cheveux
-const DEBUG = new URLSearchParams(location.search).has('debug');
+const DEBUG = true; // forcé temporairement pour diagnostic — remettre new URLSearchParams(location.search).has('debug') ensuite
+function dbg(s){ if(!DEBUG) return; const el=document.getElementById('dbgLog'); if(el) el.textContent += s+'\n'; }
+dbg('script démarré');
 
 /* ------------------------------------------------------------- assets */
 function loadImg(src){return new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=src;});}
@@ -334,10 +338,12 @@ async function initTracking(){
     });
     landmarker = await make('GPU').catch(()=>make('CPU'));
     tracking=true;
+    dbg('landmarker OK');
     say('Placez votre visage dans le cadre', 2600);
     initSegmenter(files); // en tâche de fond — n'empêche pas le suivi de démarrer
   }catch(e){
     tracking=false;
+    dbg('landmarker ÉCHEC: '+e.message);
     $('#sideRow').hidden=false;
     say('Suivi indisponible — ajustez la perruque à la main', 6000);
   }
@@ -355,8 +361,10 @@ async function initSegmenter(files){
       outputCategoryMask:true, outputConfidenceMasks:false, runningMode:'VIDEO'
     });
     segmenter = await make('GPU').catch(()=>make('CPU'));
+    dbg('segmenter OK');
   }catch(e){
     segmenter=null; // pas bloquant : la perruque continue de fonctionner sans suppression
+    dbg('segmenter ÉCHEC: '+e.message);
   }
 }
 function onSeg(result){
@@ -484,6 +492,7 @@ function buildWigGeometry(w){
 }
 
 function init3D(){
+  dbg('init3D démarré, imgs='+Object.keys(imgs).join(','));
   try{
     const renderer=new THREE.WebGLRenderer({alpha:true, antialias:true, powerPreference:'low-power'});
     renderer.setPixelRatio(1); // le canvas cible est déjà en résolution device via fit()
@@ -517,9 +526,11 @@ function init3D(){
     });
 
     three={renderer, scene, camera, meshes, lastT:0};
+    dbg('init3D OK, meshes='+Object.keys(meshes).join(','));
   }catch(e){
     three=null; // pas de WebGL disponible : pas de perruque 3D pour cette session
     console.error('init3D a échoué :', e);
+    dbg('init3D ÉCHEC: '+e.message);
     say('Rendu 3D indisponible sur cet appareil (voir la console)', 6000);
   }
 }
@@ -612,10 +623,8 @@ function loop(){
   }
   if(DEBUG){
     if(!sm) a=1; // force l'affichage avec la pose de secours même sans visage détecté
-    ctx.save();
-    ctx.fillStyle='#0f0'; ctx.font='16px monospace';
-    ctx.fillText('tracking='+tracking+' sm='+(sm?'oui':'non')+' three='+(three?'oui':'non'), 16, 28);
-    ctx.restore();
+    const el=document.getElementById('dbgLive');
+    if(el) el.textContent='LIVE tracking='+tracking+' sm='+(sm?'oui':'non')+' three='+(three?'oui':'non')+' current='+current+' canvas='+canvas.width+'x'+canvas.height;
   }
   if(a>0) render3D(Math.min(a,1));
 }
@@ -675,8 +684,15 @@ $('#share').onclick=async()=>{
 
 /* ------------------------------------------------------------ démarrage */
 (async()=>{
+  dbg('IIFE démarrage');
   buildRail();
-  await Promise.all(WIGS.map(async w=>{ imgs[w.id]=await loadImg(ASSETS['wig_'+w.id]); }));
+  dbg('rail construit');
+  try{
+    await Promise.all(WIGS.map(async w=>{ imgs[w.id]=await loadImg(ASSETS['wig_'+w.id]); }));
+    dbg('images chargées: '+Object.keys(imgs).length);
+  }catch(e){
+    dbg('CHARGEMENT IMAGES ÉCHEC: '+e.message);
+  }
   init3D();
 })();
 window.addEventListener('pagehide',()=>{ stream?.getTracks().forEach(t=>t.stop()); });
