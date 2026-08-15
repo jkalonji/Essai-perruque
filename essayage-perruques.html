@@ -552,15 +552,24 @@ function buildWigGroup(w, strandTex){
 
   const cardMat=new THREE.MeshStandardMaterial({
     map:strandTex, color:avg, transparent:true, depthWrite:false,
-    roughness:0.6, metalness:0.02, side:THREE.DoubleSide
+    roughness:0.45, metalness:0.02, side:THREE.DoubleSide // plus bas que 0.6 = reflets plus nets, cheveux "lisses et brillants"
   });
 
-  const rows=[
-    {y0:150,               n:20, hole:32}, // ligne frontale
-    {y0:420,                n:26, hole:58},
-    {y0:(420+w.length)/2,   n:26, hole:48},
-    {y0:w.length,           n:20, hole:34},
-  ];
+  // Rangées générées (racine t=0 -> pointes t=1) plutôt que 4 rangées fixes :
+  // plus de rangées = plus de densité verticale (comble les vides observés
+  // entre 150 et 420), et le nombre de cartes/l'ouverture visage suivent une
+  // courbe en cloche (pic vers le milieu du visage, resserré près de la
+  // racine et des pointes) au lieu de valeurs figées au jugé par rangée.
+  const rowCount=6;
+  const rows=[];
+  for(let i=0;i<rowCount;i++){
+    const t=i/(rowCount-1);
+    rows.push({
+      y0: 150+(w.length-150)*t,
+      n: Math.round(26+12*Math.sin(t*Math.PI)),
+      hole: 24+28*Math.sin(t*Math.PI),
+    });
+  }
   let seed=Math.abs(hash(w.id))%2147483646 || 1;
   const rand=()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; };
 
@@ -573,7 +582,7 @@ function buildWigGroup(w, strandTex){
       if(r0<4) continue;
 
       const len=90+rand()*170;
-      const width=24+rand()*20;
+      const width=30+rand()*24; // élargi (24-44 -> 30-54) pour que les cartes voisines se recouvrent et cachent le cuir chevelu
       const curve=(rand()-0.5)*0.55;
 
       const geo=new THREE.PlaneGeometry(width, len, 1, 5);
