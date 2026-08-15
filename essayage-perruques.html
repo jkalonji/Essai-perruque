@@ -516,8 +516,12 @@ function init3D(){
       const tex=new THREE.Texture(imgs[w.id]);
       tex.needsUpdate=true;
       tex.colorSpace=THREE.SRGBColorSpace;
+      // DIAGNOSTIC TEMPORAIRE : couleur unie opaque au lieu de la texture,
+      // pour vérifier si la géométrie/position est visible indépendamment
+      // de la texture/transparence. À remettre à map:tex, transparent:true
+      // une fois le problème identifié.
       const mat=new THREE.MeshStandardMaterial({
-        map:tex, transparent:true, roughness:0.6, metalness:0.04, side:THREE.DoubleSide
+        color:0xff00ff, roughness:0.6, metalness:0.04, side:THREE.DoubleSide
       });
       const mesh=new THREE.Mesh(buildWigGeometry(w), mat);
       mesh.visible=false;
@@ -588,6 +592,16 @@ function render3D(alpha){
     ctx.globalAlpha=alpha;
     ctx.drawImage(three.renderer.domElement, 0, 0);
     ctx.restore();
+    if(DEBUG && !three.logged){
+      three.logged=true;
+      const vtx=mesh?.geometry?.attributes?.position?.count;
+      dbg('render3D OK — mesh='+wig.id+' visible='+mesh?.visible+' vtx='+vtx
+        +' pos=('+mesh?.position.x.toFixed(0)+','+mesh?.position.y.toFixed(0)+')'
+        +' scale='+mesh?.scale.x.toFixed(3)
+        +' cam(right='+three.camera.right+',bottom='+three.camera.bottom+')'
+        +' canvasReel='+three.renderer.domElement.width+'x'+three.renderer.domElement.height
+        +' alpha='+alpha.toFixed(2));
+    }
   }catch(e){
     render3DFailed=true; // évite de spammer la console à 60 img/s
     console.error('render3D a échoué :', e);
