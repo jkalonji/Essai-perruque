@@ -259,7 +259,7 @@ let imgs={}, running=false, lastVT=-1, lostAt=0;
 let userScale=1, userTop=0, userSide=0;
 let sm=null; // pose lissée
 let segmenter=null, segBusy=false, lastSegVT=-1, hairMask=null; // suppression des vrais cheveux
-const DEBUG = true; // forcé temporairement pour diagnostic — remettre new URLSearchParams(location.search).has('debug') ensuite
+const DEBUG = new URLSearchParams(location.search).has('debug');
 function dbg(s){ if(!DEBUG) return; const el=document.getElementById('dbgLog'); if(el) el.textContent += s+'\n'; }
 dbg('script démarré');
 
@@ -516,12 +516,8 @@ function init3D(){
       const tex=new THREE.Texture(imgs[w.id]);
       tex.needsUpdate=true;
       tex.colorSpace=THREE.SRGBColorSpace;
-      // DIAGNOSTIC TEMPORAIRE : couleur unie opaque au lieu de la texture,
-      // pour vérifier si la géométrie/position est visible indépendamment
-      // de la texture/transparence. À remettre à map:tex, transparent:true
-      // une fois le problème identifié.
       const mat=new THREE.MeshStandardMaterial({
-        color:0xff00ff, roughness:0.6, metalness:0.04, side:THREE.DoubleSide
+        map:tex, transparent:true, roughness:0.6, metalness:0.04, side:THREE.DoubleSide
       });
       const mesh=new THREE.Mesh(buildWigGeometry(w), mat);
       mesh.visible=false;
@@ -543,7 +539,10 @@ function init3D(){
    calage rigide au pixel près sur la pose suivie */
 let hairPose=null;
 function updateHairPose(target, dt){
-  if(!hairPose){ hairPose={x:target.x,y:target.y,ang:target.ang,yaw:target.yaw,vx:0,vy:0,vang:0,vyaw:0}; return hairPose; }
+  if(!hairPose){
+    hairPose={x:target.x,y:target.y,w:target.w,ang:target.ang,yaw:target.yaw,vx:0,vy:0,vw:0,vang:0,vyaw:0};
+    return hairPose;
+  }
   const k=95, damp=15;
   const step=(cur,vel,tgt)=>{
     const acc=(tgt-cur)*k - vel*damp;
@@ -553,6 +552,7 @@ function updateHairPose(target, dt){
   let dAng=target.ang-hairPose.ang; while(dAng>Math.PI)dAng-=2*Math.PI; while(dAng<-Math.PI)dAng+=2*Math.PI;
   [hairPose.x,   hairPose.vx]   = step(hairPose.x,   hairPose.vx,   target.x);
   [hairPose.y,   hairPose.vy]   = step(hairPose.y,   hairPose.vy,   target.y);
+  [hairPose.w,   hairPose.vw]   = step(hairPose.w,   hairPose.vw,   target.w);
   [hairPose.ang, hairPose.vang] = step(hairPose.ang, hairPose.vang, hairPose.ang+dAng);
   [hairPose.yaw, hairPose.vyaw] = step(hairPose.yaw, hairPose.vyaw, target.yaw);
   return hairPose;
