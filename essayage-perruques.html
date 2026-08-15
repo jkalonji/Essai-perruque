@@ -556,17 +556,21 @@ function buildWigGroup(w, strandTex){
   });
 
   // Rangées générées (racine t=0 -> pointes t=1) plutôt que 4 rangées fixes :
-  // plus de rangées = plus de densité verticale (comble les vides observés
-  // entre 150 et 420), et le nombre de cartes/l'ouverture visage suivent une
-  // courbe en cloche (pic vers le milieu du visage, resserré près de la
-  // racine et des pointes) au lieu de valeurs figées au jugé par rangée.
-  const rowCount=6;
+  // plus de rangées = plus de densité verticale, et le nombre de cartes/
+  // l'ouverture visage suivent une courbe en cloche (pic vers le milieu du
+  // visage, resserré près de la racine et des pointes) au lieu de valeurs
+  // figées au jugé par rangée. Rangées rapprochées (t un peu plus dense)
+  // ET cartes nettement plus longues que l'écart entre rangées, pour que
+  // les pointes d'une rangée retombent PAR-DESSUS les racines de la/des
+  // rangée(s) du dessous (effet écailles/shingles) — sinon on voit les
+  // racines de la rangée suivante en dessous de la première (retour du 15/08).
+  const rowCount=9;
   const rows=[];
   for(let i=0;i<rowCount;i++){
     const t=i/(rowCount-1);
     rows.push({
       y0: 150+(w.length-150)*t,
-      n: Math.round(26+12*Math.sin(t*Math.PI)),
+      n: Math.round(20+10*Math.sin(t*Math.PI)),
       hole: 24+28*Math.sin(t*Math.PI),
     });
   }
@@ -577,11 +581,13 @@ function buildWigGroup(w, strandTex){
     for(let i=0;i<row.n;i++){
       const ang=((i+rand()*0.5)/row.n)*Math.PI*2;
       if(angDist0(ang) < THREE.MathUtils.degToRad(row.hole)) continue; // ouverture visage
-      const y0=row.y0+(rand()-0.5)*50;
+      const y0=row.y0+(rand()-0.5)*90; // jitter plus fort qu'avant pour casser l'alignement en "marches"
       const r0=hairRadiusAt(y0, w.length, w.taper);
       if(r0<4) continue;
 
-      const len=90+rand()*170;
+      // écart entre rangées ≈ (w.length-150)/(rowCount-1) ; la longueur mini
+      // doit largement le dépasser pour garantir 1-2 rangées de recouvrement
+      const len=180+rand()*220;
       const width=30+rand()*24; // élargi (24-44 -> 30-54) pour que les cartes voisines se recouvrent et cachent le cuir chevelu
       const curve=(rand()-0.5)*0.55;
 
