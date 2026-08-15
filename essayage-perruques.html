@@ -555,24 +555,27 @@ function buildWigGroup(w, strandTex){
     roughness:0.45, metalness:0.02, side:THREE.DoubleSide // plus bas que 0.6 = reflets plus nets, cheveux "lisses et brillants"
   });
 
-  // Rangées générées (racine t=0 -> pointes t=1) plutôt que 4 rangées fixes :
-  // plus de rangées = plus de densité verticale, et le nombre de cartes/
-  // l'ouverture visage suivent une courbe en cloche (pic vers le milieu du
-  // visage, resserré près de la racine et des pointes) au lieu de valeurs
-  // figées au jugé par rangée. Rangées rapprochées (t un peu plus dense)
-  // ET cartes nettement plus longues que l'écart entre rangées, pour que
-  // les pointes d'une rangée retombent PAR-DESSUS les racines de la/des
-  // rangée(s) du dessous (effet écailles/shingles) — sinon on voit les
-  // racines de la rangée suivante en dessous de la première (retour du 15/08).
-  const rowCount=9;
+  // Rangées générées (racine t=0 -> pointes t=1), moins nombreuses
+  // qu'avant (9 -> 6, coût des rangées supplémentaires trop lourd) mais
+  // chacune plus dense : au lieu d'un nombre de cartes choisi au jugé, `n`
+  // est calculé à partir de la circonférence réelle à cette hauteur (rayon
+  // × arc visible hors ouverture visage) divisée par la largeur moyenne
+  // d'une carte, avec un surplus — donc les mèches se recouvrent plutôt
+  // que de simplement se toucher, aucun espace latéral par construction
+  // (au lieu d'un réglage à l'aveugle). Les mèches "retirées" en réduisant
+  // le nombre de rangées sont ainsi redistribuées dans les rangées
+  // restantes plutôt que perdues.
+  const rowCount=6;
+  const CARD_W_AVG=42; // moyenne de width=30+rand()*24 plus bas
   const rows=[];
   for(let i=0;i<rowCount;i++){
     const t=i/(rowCount-1);
-    rows.push({
-      y0: 150+(w.length-150)*t,
-      n: Math.round(20+10*Math.sin(t*Math.PI)),
-      hole: 24+28*Math.sin(t*Math.PI),
-    });
+    const y0=150+(w.length-150)*t;
+    const hole=24+28*Math.sin(t*Math.PI); // degrés exclus de CHAQUE côté par l'ouverture visage
+    const r0=Math.max(hairRadiusAt(y0, w.length, w.taper), 10);
+    const visibleFrac=Math.max(360-2*hole, 20)/360;
+    const n=Math.max(6, Math.round((2*Math.PI*r0*visibleFrac/CARD_W_AVG)*1.25));
+    rows.push({y0, n, hole});
   }
   let seed=Math.abs(hash(w.id))%2147483646 || 1;
   const rand=()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; };
@@ -581,13 +584,14 @@ function buildWigGroup(w, strandTex){
     for(let i=0;i<row.n;i++){
       const ang=((i+rand()*0.5)/row.n)*Math.PI*2;
       if(angDist0(ang) < THREE.MathUtils.degToRad(row.hole)) continue; // ouverture visage
-      const y0=row.y0+(rand()-0.5)*90; // jitter plus fort qu'avant pour casser l'alignement en "marches"
+      const y0=row.y0+(rand()-0.5)*90; // jitter pour casser l'alignement en "marches"
       const r0=hairRadiusAt(y0, w.length, w.taper);
       if(r0<4) continue;
 
-      // écart entre rangées ≈ (w.length-150)/(rowCount-1) ; la longueur mini
-      // doit largement le dépasser pour garantir 1-2 rangées de recouvrement
-      const len=180+rand()*220;
+      // écart entre rangées ≈ (w.length-150)/(rowCount-1), plus grand
+      // qu'avant (6 rangées au lieu de 9) : la longueur mini doit le
+      // dépasser largement pour garantir 1-2 rangées de recouvrement
+      const len=240+rand()*280;
       const width=30+rand()*24; // élargi (24-44 -> 30-54) pour que les cartes voisines se recouvrent et cachent le cuir chevelu
       const curve=(rand()-0.5)*0.55;
 
