@@ -578,11 +578,26 @@ function buildWigGroup(w, strandTex){
 
       const geo=new THREE.PlaneGeometry(width, len, 1, 5);
       const pos=geo.attributes.position;
+      // regroupe les sommets par rangée (même Y = même hauteur le long de la
+      // mèche) : chaque rangée devient une "articulation" pour la chaîne
+      // physique (voir updateCardPhysics) — la racine (f=0) reste pincée au
+      // crâne, la pointe (f=1) a le plus de mou, avec un dégradé entre les
+      // deux. C'est ça qui donne un retard *graduel* le long de la mèche
+      // au lieu d'un bâton rigide qui bouge tout d'un bloc.
+      const rowsByY=new Map();
       for(let k=0;k<pos.count;k++){
-        const f=(pos.getY(k)+len/2)/len; // 0 en haut (racine) .. 1 en bas (pointe)
-        pos.setZ(k, Math.sin(f*Math.PI)*width*curve);
-        pos.setX(k, pos.getX(k)*(1-f*0.4));
+        const y=pos.getY(k);
+        if(!rowsByY.has(y)) rowsByY.set(y, []);
+        rowsByY.get(y).push(k);
       }
+      const joints=[...rowsByY.entries()]
+        .map(([y,idx])=>({idx, y, f:(y+len/2)/len}))
+        .sort((a,b)=>a.f-b.f); // racine (f=0) -> pointe (f=1)
+      joints.forEach(j=>{
+        j.z0=Math.sin(j.f*Math.PI)*width*curve; // forme de repos (stylée) figée au build
+        j.baseX=j.idx.map(k=>pos.getX(k)*(1-j.f*0.4)); // effilement, jamais retouché en jeu
+        j.idx.forEach((k,n)=>{ pos.setX(k, j.baseX[n]); pos.setZ(k, j.z0); });
+      });
       geo.computeVertexNormals();
 
       const card=new THREE.Mesh(geo, cardMat);
@@ -590,19 +605,8 @@ function buildWigGroup(w, strandTex){
       // (haut de la carte, f=0) parte de y0 au lieu que son centre y soit planté
       card.position.set(Math.sin(ang)*r0, y0-ANCHOR_Y+len*0.42, Math.cos(ang)*r0);
       card.rotation.y=ang;
-      const baseTiltX=-0.15-rand()*0.3; // les mèches tombent légèrement vers l'avant
-      card.rotation.x=baseTiltX;
-      // physique secondaire : chaque carte a son propre petit ressort
-      // (raideur/amortissement/gain randomisés) pour ne pas bouger en bloc
-      // rigide avec le reste de la perruque — voir updateCardPhysics().
-      card.userData.phys={
-        baseTiltX,
-        rotX:0, vRotX:0,
-        rotZ:0, vRotZ:0,
-        k:55+rand()*55, damp:9+rand()*6,
-        gain:0.5+(len/260)*0.9+rand()*0.3, // mèches longues/basses = plus de traîne
-        phase:rand()*Math.PI*2,
-      };
+      card.rotation.x=-0.15-rand()*0.3; // les mèches tombent légèrement vers l'avant
+      card.userData.phys={joints, simPos:null, simVel:null};
       group.add(card);
     }
   });
@@ -673,25 +677,70 @@ function updateHairPose(target, dt){
   return hairPose;
 }
 
-/* physique secondaire des cartes de cheveux : chaque carte traîne derrière
-   le mouvement de la tête avec son propre ressort (voir userData.phys posé
-   dans buildWigGroup), au lieu de suivre rigidement le groupe entier —
-   c'est ce qui casse l'effet "méduse rigide". Valeurs de gain/portée
-   choisies au jugé, à réajuster visuellement si besoin. */
-function updateCardPhysics(group, hp, dt){
-  const clamp=(v,m)=>Math.max(-m,Math.min(m,v));
-  const exX=clamp(hp.vy*0.00035 - hp.vyaw*0.9, 0.6); // hochement/rotation -> tangage des mèches
-  const exZ=clamp(hp.vx*0.00035 + hp.vang*0.9, 0.6); // déplacement latéral/roulis -> mèches qui traînent
+/* physique secondaire des cartes de cheveux : chaque mèche est simulée comme
+   une petite chaîne d'articulations (une par rangée de sommets, racine ->
+   pointe, voir buildWigGroup) au lieu d'un seul bâton rigide. Pour chaque
+   articulation, la "cible" est la position qu'elle aurait si la mèche
+   suivait rigidement la tête (calculée via card.localToWorld sur sa forme
+   de repos) ; un ressort tire la position simulée vers cette cible, avec
+   une raideur qui DIMINUE et une gravité qui AUGMENTE en allant vers la
+   pointe — d'où le retard graduel le long de la mèche au lieu d'un bloc
+   qui bouge d'un coup. La racine (f=0) est pincée exactement sur la cible
+   (aucun retard, elle est "plantée" dans le crâne). Constantes de
+   raideur/amortissement/gravité choisies au jugé, à réajuster visuellement. */
+const HAIR_GRAVITY=650; // "px" en espace scène (~pixels écran, voir WIG_W/WIDTH_RATIO), vers le bas
+function updateCardPhysics(group, dt){
+  group.updateMatrixWorld(true); // matrices à jour pour CETTE frame avant de lire les cibles
+  const invMat=new THREE.Matrix4();
+  const tmp=new THREE.Vector3();
+  const target=new THREE.Vector3();
   group.children.forEach(card=>{
     const ph=card.userData.phys;
     if(!ph) return; // la calotte (cap) n'a pas de physique
-    const targetX=exX*ph.gain, targetZ=exZ*ph.gain;
-    const accX=(targetX-ph.rotX)*ph.k - ph.vRotX*ph.damp;
-    ph.vRotX+=accX*dt; ph.rotX+=ph.vRotX*dt;
-    const accZ=(targetZ-ph.rotZ)*ph.k - ph.vRotZ*ph.damp;
-    ph.vRotZ+=accZ*dt; ph.rotZ+=ph.vRotZ*dt;
-    card.rotation.x=ph.baseTiltX+ph.rotX;
-    card.rotation.z=ph.rotZ;
+    if(!ph.simPos){
+      // 1er frame : initialise pile sur la pose rigide, pas de "pop" visible
+      ph.simPos=ph.joints.map(()=>new THREE.Vector3());
+      ph.simVel=ph.joints.map(()=>new THREE.Vector3());
+      ph.joints.forEach((j,i)=>{
+        tmp.set(0, j.y, j.z0);
+        card.localToWorld(tmp);
+        ph.simPos[i].copy(tmp);
+      });
+    }
+    invMat.copy(card.matrixWorld).invert();
+
+    ph.joints.forEach((j,i)=>{
+      if(i===0) return; // racine pincée au crâne : pas de simulation, pas de retard
+      target.set(0, j.y, j.z0);
+      card.localToWorld(target);
+
+      const softness=j.f;                // 0 près de la racine (rigide) .. 1 à la pointe (mou)
+      const k=140-95*softness;
+      const damp=16-7*softness;
+      const g=HAIR_GRAVITY*softness*softness; // les pointes pendent sous leur propre poids
+
+      const vel=ph.simVel[i], p=ph.simPos[i];
+      vel.x+=((target.x-p.x)*k - vel.x*damp)*dt;
+      vel.y+=((target.y-p.y)*k - vel.y*damp + g)*dt;
+      vel.z+=((target.z-p.z)*k - vel.z*damp)*dt;
+      p.addScaledVector(vel, dt);
+    });
+
+    // reprojette chaque articulation simulée dans l'espace local de la carte
+    // et réécrit seulement X/Z (Y reste fixe : la mèche ne s'étire pas, elle
+    // se contente de plier — simplification volontaire, pas de contrainte
+    // de distance séparée).
+    const pos=card.geometry.attributes.position;
+    ph.joints.forEach((j,i)=>{
+      let lx=0, lz=j.z0;
+      if(i>0){
+        tmp.copy(ph.simPos[i]).applyMatrix4(invMat);
+        lx=tmp.x; lz=tmp.z;
+      }
+      j.idx.forEach((k,n)=>{ pos.setX(k, j.baseX[n]+lx); pos.setZ(k, lz); });
+    });
+    pos.needsUpdate=true;
+    card.geometry.computeVertexNormals();
   });
 }
 
@@ -723,7 +772,7 @@ function render3D(alpha){
       mesh.scale.setScalar(s);
       mesh.rotation.z = hp.ang;         // roulis (tête penchée épaule)
       mesh.rotation.y = -hp.yaw*1.7;    // vraie rotation 3D (tête tournée) — signe à vérifier à l'écran
-      updateCardPhysics(mesh, hp, dt);
+      updateCardPhysics(mesh, dt);
     }
     three.renderer.render(three.scene, three.camera);
     ctx.save();
