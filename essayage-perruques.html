@@ -479,17 +479,125 @@ function hairRadiusAt(y, length, taper){
   return 0;
 }
 
-function buildWigGeometry(w){
-  const top=262-216, bottom=w.length+60, N=48;
+/* calotte pleine : couvre le crâne sans trou, sert de base sous les cartes */
+function buildCapGeometry(w){
+  // s'arrête à 194 : c'est là que commence l'ouverture visage dans le
+  // design original (make_wigs.py, hole_top). Au-delà, seules les cartes
+  // (avec leur trou frontal) doivent couvrir, jamais une calotte pleine.
+  const top=262-216, bottom=194, N=10;
   const pts=[];
   for(let i=0;i<=N;i++){
     const y=top+(bottom-top)*i/N;
-    const r=hairRadiusAt(y, w.length, w.taper);
-    pts.push(new THREE.Vector2(r, y-ANCHOR_Y));
+    pts.push(new THREE.Vector2(hairRadiusAt(y, w.length, w.taper), y-ANCHOR_Y));
   }
-  // phiStart=PI : place le centre de la texture (le trou du visage) face caméra
-  return new THREE.LatheGeometry(pts, 56, Math.PI, Math.PI*2);
+  return new THREE.LatheGeometry(pts, 32);
 }
+
+/* texture partagée par toutes les cartes : quelques mèches douces qui
+   s'estompent vers la pointe. Seule la teinte (material.color) change
+   par style — voir averageColor(). */
+function makeStrandTexture(){
+  const c=document.createElement('canvas'); c.width=64; c.height=256;
+  const g=c.getContext('2d');
+  for(let i=0;i<6;i++){
+    const cx=6+i*(52/5)+(Math.random()-0.5)*4;
+    const hw=7+Math.random()*5;
+    const grad=g.createLinearGradient(cx-hw,0,cx+hw,0);
+    grad.addColorStop(0,'rgba(255,255,255,0)');
+    grad.addColorStop(0.5,'rgba(255,255,255,0.95)');
+    grad.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=grad;
+    g.fillRect(0,0,64,256);
+  }
+  g.globalCompositeOperation='destination-out';
+  const fade=g.createLinearGradient(0,0,0,256);
+  fade.addColorStop(0,'rgba(0,0,0,0)');
+  fade.addColorStop(0.7,'rgba(0,0,0,0)');
+  fade.addColorStop(1,'rgba(0,0,0,0.9)');
+  g.fillStyle=fade;
+  g.fillRect(0,0,64,256);
+  g.globalCompositeOperation='source-over';
+  const tex=new THREE.CanvasTexture(c);
+  tex.colorSpace=THREE.SRGBColorSpace;
+  return tex;
+}
+
+/* couleur moyenne des pixels non transparents de la texture existante,
+   pour teinter les cartes avec la vraie couleur du produit photographié */
+function averageColor(img){
+  const c=document.createElement('canvas'); c.width=32; c.height=32;
+  const g=c.getContext('2d');
+  g.drawImage(img,0,0,32,32);
+  const d=g.getImageData(0,0,32,32).data;
+  let r=0,gr=0,b=0,n=0;
+  for(let i=0;i<d.length;i+=4){
+    if(d[i+3]<40) continue;
+    r+=d[i]; gr+=d[i+1]; b+=d[i+2]; n++;
+  }
+  if(!n) return 0xcccccc;
+  return (Math.round(r/n)<<16)|(Math.round(gr/n)<<8)|Math.round(b/n);
+}
+
+const angDist0=ang=>Math.abs((((ang+Math.PI)%(2*Math.PI))+2*Math.PI)%(2*Math.PI)-Math.PI);
+
+/* mèches individuelles : des petites cartes courbes réparties en anneaux
+   autour du crâne, comme des hair cards de jeu vidéo, plutôt qu'une seule
+   photo enroulée. */
+function buildWigGroup(w, strandTex){
+  const group=new THREE.Group();
+
+  const avg=averageColor(imgs[w.id]);
+  const capMat=new THREE.MeshStandardMaterial({color:avg, roughness:0.75, metalness:0.02});
+  group.add(new THREE.Mesh(buildCapGeometry(w), capMat));
+
+  const cardMat=new THREE.MeshStandardMaterial({
+    map:strandTex, color:avg, transparent:true, depthWrite:false,
+    roughness:0.6, metalness:0.02, side:THREE.DoubleSide
+  });
+
+  const rows=[
+    {y0:150,               n:20, hole:32}, // ligne frontale
+    {y0:420,                n:26, hole:58},
+    {y0:(420+w.length)/2,   n:26, hole:48},
+    {y0:w.length,           n:20, hole:34},
+  ];
+  let seed=Math.abs(hash(w.id))%2147483646 || 1;
+  const rand=()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; };
+
+  rows.forEach(row=>{
+    for(let i=0;i<row.n;i++){
+      const ang=((i+rand()*0.5)/row.n)*Math.PI*2;
+      if(angDist0(ang) < THREE.MathUtils.degToRad(row.hole)) continue; // ouverture visage
+      const y0=row.y0+(rand()-0.5)*50;
+      const r0=hairRadiusAt(y0, w.length, w.taper);
+      if(r0<4) continue;
+
+      const len=90+rand()*170;
+      const width=24+rand()*20;
+      const curve=(rand()-0.5)*0.55;
+
+      const geo=new THREE.PlaneGeometry(width, len, 1, 5);
+      const pos=geo.attributes.position;
+      for(let k=0;k<pos.count;k++){
+        const f=(pos.getY(k)+len/2)/len; // 0 en haut (racine) .. 1 en bas (pointe)
+        pos.setZ(k, Math.sin(f*Math.PI)*width*curve);
+        pos.setX(k, pos.getX(k)*(1-f*0.4));
+      }
+      geo.computeVertexNormals();
+
+      const card=new THREE.Mesh(geo, cardMat);
+      // le centre de la carte est décalé vers le bas de len/2 pour que sa racine
+      // (haut de la carte, f=0) parte de y0 au lieu que son centre y soit planté
+      card.position.set(Math.sin(ang)*r0, y0-ANCHOR_Y+len*0.42, Math.cos(ang)*r0);
+      card.rotation.y=ang;
+      card.rotation.x=-0.15-rand()*0.3; // les mèches tombent légèrement vers l'avant
+      group.add(card);
+    }
+  });
+
+  return group;
+}
+function hash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h; }
 
 function init3D(){
   dbg('init3D démarré, imgs='+Object.keys(imgs).join(','));
@@ -511,18 +619,13 @@ function init3D(){
     rim.position.set(400,300,-500); // contre-jour, pour détacher des cheveux de l'arrière-plan
     scene.add(rim);
 
+    const strandTex=makeStrandTexture();
     const meshes={};
     WIGS.forEach(w=>{
-      const tex=new THREE.Texture(imgs[w.id]);
-      tex.needsUpdate=true;
-      tex.colorSpace=THREE.SRGBColorSpace;
-      const mat=new THREE.MeshStandardMaterial({
-        map:tex, transparent:true, roughness:0.6, metalness:0.04, side:THREE.DoubleSide
-      });
-      const mesh=new THREE.Mesh(buildWigGeometry(w), mat);
-      mesh.visible=false;
-      scene.add(mesh);
-      meshes[w.id]=mesh;
+      const group=buildWigGroup(w, strandTex);
+      group.visible=false;
+      scene.add(group);
+      meshes[w.id]=group;
     });
 
     three={renderer, scene, camera, meshes, lastT:0};
@@ -594,8 +697,7 @@ function render3D(alpha){
     ctx.restore();
     if(DEBUG && !three.logged){
       three.logged=true;
-      const vtx=mesh?.geometry?.attributes?.position?.count;
-      dbg('render3D OK — mesh='+wig.id+' visible='+mesh?.visible+' vtx='+vtx
+      dbg('render3D OK — wig='+wig.id+' visible='+mesh?.visible+' enfants='+mesh?.children.length
         +' pos=('+mesh?.position.x.toFixed(0)+','+mesh?.position.y.toFixed(0)+')'
         +' scale='+mesh?.scale.x.toFixed(3)
         +' cam(right='+three.camera.right+',bottom='+three.camera.bottom+')'
