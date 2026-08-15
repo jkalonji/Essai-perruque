@@ -590,7 +590,19 @@ function buildWigGroup(w, strandTex){
       // (haut de la carte, f=0) parte de y0 au lieu que son centre y soit planté
       card.position.set(Math.sin(ang)*r0, y0-ANCHOR_Y+len*0.42, Math.cos(ang)*r0);
       card.rotation.y=ang;
-      card.rotation.x=-0.15-rand()*0.3; // les mèches tombent légèrement vers l'avant
+      const baseTiltX=-0.15-rand()*0.3; // les mèches tombent légèrement vers l'avant
+      card.rotation.x=baseTiltX;
+      // physique secondaire : chaque carte a son propre petit ressort
+      // (raideur/amortissement/gain randomisés) pour ne pas bouger en bloc
+      // rigide avec le reste de la perruque — voir updateCardPhysics().
+      card.userData.phys={
+        baseTiltX,
+        rotX:0, vRotX:0,
+        rotZ:0, vRotZ:0,
+        k:55+rand()*55, damp:9+rand()*6,
+        gain:0.5+(len/260)*0.9+rand()*0.3, // mèches longues/basses = plus de traîne
+        phase:rand()*Math.PI*2,
+      };
       group.add(card);
     }
   });
@@ -661,6 +673,28 @@ function updateHairPose(target, dt){
   return hairPose;
 }
 
+/* physique secondaire des cartes de cheveux : chaque carte traîne derrière
+   le mouvement de la tête avec son propre ressort (voir userData.phys posé
+   dans buildWigGroup), au lieu de suivre rigidement le groupe entier —
+   c'est ce qui casse l'effet "méduse rigide". Valeurs de gain/portée
+   choisies au jugé, à réajuster visuellement si besoin. */
+function updateCardPhysics(group, hp, dt){
+  const clamp=(v,m)=>Math.max(-m,Math.min(m,v));
+  const exX=clamp(hp.vy*0.00035 - hp.vyaw*0.9, 0.6); // hochement/rotation -> tangage des mèches
+  const exZ=clamp(hp.vx*0.00035 + hp.vang*0.9, 0.6); // déplacement latéral/roulis -> mèches qui traînent
+  group.children.forEach(card=>{
+    const ph=card.userData.phys;
+    if(!ph) return; // la calotte (cap) n'a pas de physique
+    const targetX=exX*ph.gain, targetZ=exZ*ph.gain;
+    const accX=(targetX-ph.rotX)*ph.k - ph.vRotX*ph.damp;
+    ph.vRotX+=accX*dt; ph.rotX+=ph.vRotX*dt;
+    const accZ=(targetZ-ph.rotZ)*ph.k - ph.vRotZ*ph.damp;
+    ph.vRotZ+=accZ*dt; ph.rotZ+=ph.vRotZ*dt;
+    card.rotation.x=ph.baseTiltX+ph.rotX;
+    card.rotation.z=ph.rotZ;
+  });
+}
+
 let render3DFailed=false;
 function render3D(alpha){
   if(!three || render3DFailed) return;
@@ -689,6 +723,7 @@ function render3D(alpha){
       mesh.scale.setScalar(s);
       mesh.rotation.z = hp.ang;         // roulis (tête penchée épaule)
       mesh.rotation.y = -hp.yaw*1.7;    // vraie rotation 3D (tête tournée) — signe à vérifier à l'écran
+      updateCardPhysics(mesh, hp, dt);
     }
     three.renderer.render(three.scene, three.camera);
     ctx.save();
