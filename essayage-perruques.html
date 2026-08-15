@@ -688,7 +688,7 @@ function updateHairPose(target, dt){
    qui bouge d'un coup. La racine (f=0) est pincée exactement sur la cible
    (aucun retard, elle est "plantée" dans le crâne). Constantes de
    raideur/amortissement/gravité choisies au jugé, à réajuster visuellement. */
-const HAIR_GRAVITY=650; // "px" en espace scène (~pixels écran, voir WIG_W/WIDTH_RATIO), vers le bas
+const HAIR_GRAVITY=1500; // "px" en espace scène (~pixels écran, voir WIG_W/WIDTH_RATIO), vers le bas
 function updateCardPhysics(group, dt){
   group.updateMatrixWorld(true); // matrices à jour pour CETTE frame avant de lire les cibles
   const invMat=new THREE.Matrix4();
