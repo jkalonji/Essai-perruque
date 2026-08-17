@@ -94,61 +94,55 @@ méthode Lab que pour les mèches. C'est donc un compositing "artisanal"
 ta vraie texture bouclée, mais un léger raccord peut rester visible à la
 jonction avec le reste des cheveux.
 
-## Rendu génératif réel (HairFastGAN, qualité "hairstyleai.ai")
+## Générer une coiffure complètement différente (FLUX.1-Kontext-dev, local)
 
-`HairFastGAN/` fait tourner en local, sur ton GPU (NVIDIA RTX 5060 Ti), le
-vrai modèle **HairFastGAN** (AIRI-Institute, NeurIPS 2024) — celui qui
-équipe ce genre de site. Contrairement à `add_fringe.py`, ce n'est pas du
-compositing : le visage est ré-encodé dans l'espace latent d'un StyleGAN2
-puis regénéré en entier avec la forme et la couleur de cheveux demandées,
-d'où un rendu bien plus net et cohérent (mais recadré/redimensionné en
-1024×1024, format natif du modèle — donc plus proche d'une photo d'identité
-que ta photo originale).
+`run_kontext.py` fait tourner en local, sur ton GPU (NVIDIA RTX 5060 Ti), le
+modèle **FLUX.1-Kontext-dev** (Black Forest Labs) — un éditeur d'image par
+instruction texte. Contrairement à `add_fringe.py` (compositing) ou au
+filtre webcam (calque plaqué), c'est une vraie régénération par un modèle
+de diffusion à partir d'une instruction en langage naturel ("change
+hairstyle to..."), en préservant le reste de la photo (visage, fond,
+lunettes...). Le rendu le plus réaliste des méthodes du dépôt, et la seule
+qui permette de décrire n'importe quelle coiffure en texte libre plutôt
+qu'à partir d'une photo de référence.
 
 ### Lancer
 
 ```bash
-cd HairFastGAN
-.venv/Scripts/python.exe run_local.py
+python run_kontext.py brushing_frange
 ```
 
-Modifie en haut de `run_local.py` :
-- `FACE` : ta photo (`../images/moi.jpg`)
-- `SHAPE` : photo de référence pour la **forme** de coiffure voulue
-- `LOOKS` : liste de (nom de sortie, photo de référence pour la **couleur**)
+(sans argument → coiffure par défaut, voir `DEFAULT_STYLE` dans le fichier).
+Le script lit `images/moi.jpg`, applique la coiffure demandée, et sauve le
+résultat dans `results/kontext_<style>_<horodatage>.png` (jamais écrasé).
 
-Les photos de référence utilisées sont dans `refs/` (trouvées sur Pexels,
-libres de droits). Le modèle a besoin d'un visage détectable par dlib dans
-chaque photo de référence — teste avec :
-```python
-import dlib, cv2
-det = dlib.get_frontal_face_detector()
-print(len(det(cv2.cvtColor(cv2.imread("refs/ta_photo.jpg"), cv2.COLOR_BGR2RGB), 1)))
-```
-(0 = pas de visage détecté, il en faut une autre — les gros plans/profils
-extrêmes échouent souvent).
+Premier lancement : le transformer (~24 Go en bf16) est téléchargé une fois
+depuis Hugging Face (connexion internet nécessaire), quantifié en FP8 pour
+tenir dans 16 Go de VRAM, et mis en cache localement dans
+`models/flux_kontext_transformer_fp8/` — les lancements suivants sautent
+cette étape et démarrent en quelques secondes. Une génération prend environ
+3 minutes sur une RTX 5060 Ti 16 Go.
 
-### Ce qui a été nécessaire pour que ça tourne (pour info / si tu réinstalles)
+### Choisir/ajouter une coiffure
 
-- Environnement virtuel dédié `HairFastGAN/.venv` (⚠️ ne jamais installer ces
-  dépendances dans l'environnement Python global — première tentative
-  ratée qui a cassé des paquets partagés, corrigée depuis).
-- PyTorch CUDA 12.8 (`pip install --index-url https://download.pytorch.org/whl/cu128 torch torchvision`)
-  pour supporter ta carte (Blackwell, capability 12.0).
-- `dlib-bin` au lieu de `dlib` (le vrai `dlib` doit se compiler avec
-  CMake + un compilateur C++, absents ici).
-- 4 fichiers de `models/**/stylegan2/op/{fused_act,upfirdn2d}.py` patchés
-  pour utiliser leur repli pur PyTorch plutôt que de compiler une extension
-  CUDA maison (qui aurait nécessité Visual Studio Build Tools + CUDA
-  Toolkit complet, non installés) — légèrement plus lent, invisible ici.
-- Poids du modèle (~7,2 Go) dans `HairFastGAN/pretrained_models/`,
-  téléchargés depuis Hugging Face.
+Les coiffures disponibles sont définies dans le dictionnaire `HAIRSTYLES` en
+tête de `run_kontext.py` : `cle -> (prompt, LoRA optionnel)`. Pour en
+ajouter une, ajoute une entrée avec une description en anglais du résultat
+voulu.
 
-Poids d'origine sur https://huggingface.co/spaces/AIRI-Institute/HairFastGAN
-et code sur https://github.com/AIRI-Institute/HairFastGAN — la démo
-publique elle-même (et ses forks) est en panne depuis un moment (tourne
-sur du CPU gratuit alors que le modèle a besoin d'un GPU), d'où le passage
-en local.
+Une clause `IDENTITY_GUARD` ("Keep the same face and identity unchanged.")
+est ajoutée automatiquement à tous les prompts. Sans elle, un prompt au
+vocabulaire fortement genré (ex. "long, face-framing, sleek and neatly
+styled") peut faire dériver le modèle vers un visage différent au lieu de
+se contenter d'éditer les cheveux — observé et reproduit plusieurs fois
+pendant le réglage des prompts, corrigé par cette clause.
+
+### Suivre ce qui a été généré
+
+Chaque génération est loggée dans `results/generation_log.tsv`
+(`timestamp | style | fichier | lora | prompt`) — pratique pour retrouver
+quel prompt exact a produit quelle image sans rouvrir le log de chaque run.
+Fichier texte à colonnes, lisible avec `cat`/`less`/un tableur.
 
 ## Quelle méthode utiliser ?
 
@@ -157,7 +151,7 @@ en local.
 | Essayer une **perruque** en direct à la webcam | `webapp/index.html` |
 | Juste tester une **couleur/mèches** sur ta vraie coiffure actuelle | `recolor_hair.py` |
 | Tester une **frange**, rendu rapide mais approximatif | `add_fringe.py` |
-| Tester une **frange + couleur**, rendu le plus réaliste (recadré 1024×1024, GPU requis) | `HairFastGAN/run_local.py` |
+| Tester une **coiffure décrite en texte libre**, rendu le plus réaliste (GPU requis) | `run_kontext.py` |
 
 ## Limites (c'est un prototype simple)
 
@@ -167,3 +161,7 @@ en local.
 - Le placement automatique est une approximation 2D (pas de vraie 3D) : il
   suit bien les mouvements de la tête, mais un profil très de biais peut
   décrocher un peu — les sliders compensent.
+- `run_kontext.py` a besoin d'une photo où les cheveux sont réellement
+  visibles (pas de bonnet/casquette qui les recouvre) : sans zone de
+  cheveux à éditer localement, le modèle peut dériver bien au-delà de la
+  coiffure (visage, tenue...), même avec `IDENTITY_GUARD`.
