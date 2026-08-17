@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Essai de perruque</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>💇‍♀️ Essaie ta perruque</h1>
+    <p class="subtitle">Comme un filtre Snapchat — directement dans ton navigateur, rien n'est envoyé sur internet.</p>
+    <p class="subtitle"><a href="capture.html">📷 Prendre une photo pour tester des mèches/couleurs →</a></p>
+  </header>
+
+  <main>
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="hint" class="hint">Autorise la caméra pour commencer…</div>
+      </div>
+      <div class="stage-actions">
+        <button id="snapBtn" class="btn primary" disabled>📸 Prendre une photo</button>
+        <button id="mirrorBtn" class="btn" disabled>🔄 Inverser</button>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <section>
+        <h2>Perruques</h2>
+        <div id="wigPicker" class="wig-picker"></div>
+      </section>
+
+      <section>
+        <h2>Ajustements</h2>
+        <label class="slider-row">
+          <span>Taille</span>
+          <input type="range" id="scaleSlider" min="0.5" max="2" step="0.01" value="1" />
+        </label>
+        <label class="slider-row">
+          <span>Hauteur</span>
+          <input type="range" id="vertSlider" min="-0.4" max="0.4" step="0.01" value="0" />
+        </label>
+        <label class="slider-row">
+          <span>Décalage horizontal</span>
+          <input type="range" id="horizSlider" min="-0.3" max="0.3" step="0.01" value="0" />
+        </label>
+        <label class="slider-row">
+          <span>Rotation</span>
+          <input type="range" id="rotSlider" min="-30" max="30" step="1" value="0" />
+        </label>
+        <button id="resetBtn" class="btn small">Réinitialiser les réglages</button>
+      </section>
+
+      <section id="gallery-section" hidden>
+        <h2>Photos prises</h2>
+        <div id="gallery" class="gallery"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer>
+    <p>Astuce : place-toi bien en face de la caméra, dans une pièce lumineuse, pour un suivi plus stable.</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

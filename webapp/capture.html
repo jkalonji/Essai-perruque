@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prendre une photo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>📷 Prends ta photo</h1>
+    <p class="subtitle">
+      Visage dégagé, de face, dans une pièce bien éclairée. Cette photo servira
+      à tester des mèches/reflets — rien n'est envoyé où que ce soit.
+    </p>
+  </header>
+
+  <main>
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="frozen" class="hidden-canvas"></canvas>
+        <div id="hint" class="hint">Autorise la caméra pour commencer…</div>
+      </div>
+      <div class="stage-actions" id="liveActions">
+        <button id="shootBtn" class="btn primary" disabled>⚪ Prendre la photo</button>
+      </div>
+      <div class="stage-actions" id="reviewActions" hidden>
+        <button id="retakeBtn" class="btn">↺ Reprendre</button>
+        <button id="saveBtn" class="btn primary">💾 Enregistrer dans images/</button>
+      </div>
+      <p id="status" class="status"></p>
+    </div>
+  </main>
+
+  <footer>
+    <p>La photo est enregistrée en local sur ton ordinateur, dans le dossier du projet.</p>
+  </footer>
+
+  <script src="capture.js"></script>
+</body>
+</html>

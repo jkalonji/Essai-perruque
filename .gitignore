@@ -1,1 +1,8 @@
-Videos/
+# Dépendance tierce (projet HairFastGAN cloné en local, ~12 Go avec les
+# poids pré-entraînés) — voir le README pour le lien vers le dépôt original.
+HairFastGAN/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

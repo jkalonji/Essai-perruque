@@ -1,0 +1,29 @@
+[
+  {
+    "id": "blonde_straight",
+    "name": "Blond lisse",
+    "file": "assets/wigs/blonde_straight.png",
+    "width": 1444,
+    "height": 1906,
+    "anchorXNorm": 0.2668,
+    "anchorYNorm": 0.0042
+  },
+  {
+    "id": "dark_wavy",
+    "name": "Brun ondulé",
+    "file": "assets/wigs/dark_wavy.png",
+    "width": 936,
+    "height": 1203,
+    "anchorXNorm": 0.3839,
+    "anchorYNorm": 0.0067
+  },
+  {
+    "id": "dark_straight",
+    "name": "Brun lisse",
+    "file": "assets/wigs/dark_straight.png",
+    "width": 814,
+    "height": 1223,
+    "anchorXNorm": 0.3687,
+    "anchorYNorm": 0.0065
+  }
+]
