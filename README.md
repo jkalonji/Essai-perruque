@@ -123,6 +123,28 @@ tenir dans 16 Go de VRAM, et mis en cache localement dans
 cette étape et démarrent en quelques secondes. Une génération prend environ
 3 minutes sur une RTX 5060 Ti 16 Go.
 
+### Prérequis / performance
+
+- **GPU NVIDIA avec au moins ~16 Go de VRAM** (testé sur une RTX 5060 Ti).
+  Télécharger le modèle ne suffit pas : le transformer pèse ~24 Go en bf16,
+  bien plus que la VRAM disponible — il doit d'abord être quantifié en FP8
+  poids-seuls (torchao) pour tenir en mémoire, d'où le passage bf16 → FP8 au
+  premier lancement (voir le docstring de `run_kontext.py`).
+- **Pagefile Windows généreux recommandé** (32-64 Go) : si la VRAM est déjà
+  quasi saturée (par ex. un autre outil GPU ouvert en parallèle, comme
+  LM Studio), le driver NVIDIA bascule silencieusement une partie des
+  données vers la RAM système/le pagefile au lieu d'échouer franchement — ça
+  ne plante pas, mais une génération peut alors passer de ~3 minutes à
+  près de 2 heures. Symptôme reconnaissable : GPU à 100% d'utilisation dans
+  le gestionnaire de tâches mais consommation électrique très faible
+  (~35-40 W au lieu de ~180 W) → c'est le signe que le GPU attend de la
+  mémoire plutôt que de calculer. Dans ce cas, ferme les autres applications
+  qui utilisent le GPU avant de lancer une génération.
+- Le script mitige déjà cette contrainte mémoire par défaut : image d'entrée
+  redimensionnée (`MAX_SIDE = 1024`), moins d'étapes de débruitage
+  (`NUM_STEPS = 20` au lieu de 28 par défaut) et `enable_model_cpu_offload()`
+  (ne garde sur le GPU que le composant du pipeline en train de travailler).
+
 ### Choisir/ajouter une coiffure
 
 Les coiffures disponibles sont définies dans le dictionnaire `HAIRSTYLES` en
