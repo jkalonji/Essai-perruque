@@ -9,3 +9,12 @@ __pycache__/
 
 # État local d'outils (agents IA, etc.), pas du code du projet.
 .claude/
+
+# Transformer FLUX Kontext quantifie en FP8 (~11 Go), regenere localement
+# au premier lancement de run_kontext.py — voir son docstring.
+models/flux_kontext_transformer_fp8/
+
+# Logs/chronos des essais de reglages de run_kontext.py (pas des artefacts utiles)
+results/_kontext_*.log
+results/_run*_start.txt
+results/_run*_timing.txt
