@@ -130,19 +130,30 @@ tête de `run_kontext.py` : `cle -> (prompt, LoRA optionnel)`. Pour en
 ajouter une, ajoute une entrée avec une description en anglais du résultat
 voulu.
 
-Une clause `IDENTITY_GUARD` ("Keep the same face and identity unchanged.")
-est ajoutée automatiquement à tous les prompts. Sans elle, un prompt au
-vocabulaire fortement genré (ex. "long, face-framing, sleek and neatly
-styled") peut faire dériver le modèle vers un visage différent au lieu de
-se contenter d'éditer les cheveux — observé et reproduit plusieurs fois
-pendant le réglage des prompts, corrigé par cette clause.
+Certains vocabulaires font dériver le modèle vers un visage différent (voire
+un genre/âge différent) au lieu de se contenter d'éditer les cheveux —
+observé et reproduit plusieurs fois pendant le réglage des prompts (ex. la
+combinaison "long past the shoulders" + "face-framing" + "sleek and neatly
+styled"). Une clause générique de type "Keep the same face and identity
+unchanged." a été testée mais n'est pas fiable (parfois ignorée par le
+modèle) : elle a été retirée. À la place, chaque prompt de `HAIRSTYLES`
+mentionne explicitement le genre de la personne ("This is a man."/"This is
+a woman.") quand c'est pertinent — mais ça ne garantit pas non plus la
+préservation du visage : certains vocabulaires (ex. "blowout/face-framing/
+sleek") font dériver le visage quel que soit le seed testé, d'autres (ex.
+"curly/ringlet") sont plus proches d'un seuil où le seed peut faire basculer
+le résultat dans un sens ou l'autre (voir le commentaire au-dessus de `SEED`
+dans `run_kontext.py` pour le détail des tests). Un seed fixe (`SEED` dans
+le fichier) permet de reproduire exactement un résultat et de distinguer un
+effet du prompt d'un simple coup de chance.
 
 ### Suivre ce qui a été généré
 
 Chaque génération est loggée dans `results/generation_log.tsv`
-(`timestamp | style | fichier | lora | prompt`) — pratique pour retrouver
-quel prompt exact a produit quelle image sans rouvrir le log de chaque run.
-Fichier texte à colonnes, lisible avec `cat`/`less`/un tableur.
+(`timestamp | style | fichier | lora | seed | prompt`) — pratique pour
+retrouver quel prompt exact (et quel seed) a produit quelle image sans
+rouvrir le log de chaque run. Fichier texte à colonnes, lisible avec
+`cat`/`less`/un tableur.
 
 ## Quelle méthode utiliser ?
 
@@ -164,4 +175,8 @@ Fichier texte à colonnes, lisible avec `cat`/`less`/un tableur.
 - `run_kontext.py` a besoin d'une photo où les cheveux sont réellement
   visibles (pas de bonnet/casquette qui les recouvre) : sans zone de
   cheveux à éditer localement, le modèle peut dériver bien au-delà de la
-  coiffure (visage, tenue...), même avec `IDENTITY_GUARD`.
+  coiffure (visage, tenue...).
+- `run_kontext.py` ne garantit pas de préserver le visage/l'identité de la
+  photo source : selon le vocabulaire du prompt (et parfois le seed), le
+  modèle peut générer un visage différent — voir la section
+  "Choisir/ajouter une coiffure" ci-dessus.

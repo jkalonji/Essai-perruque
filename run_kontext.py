@@ -53,17 +53,39 @@ TRANSFORMER_FP8_DIR = "models/flux_kontext_transformer_fp8"
 GENERATION_LOG = f"{OUT_DIR}/generation_log.tsv"
 MAX_SIDE = 1024  # redimensionne l'image d'entree si plus grande, pour limiter la VRAM prise par les activations
 NUM_STEPS = 20  # 28 par defaut ; 20 suffit largement pour ce genre d'edition, quasi lineaire sur le temps total
+# Seed fixe pour le bruit initial -> meme entree (image+prompt+params) donne
+# toujours la meme sortie. Sans ca, chaque run tire un bruit initial
+# different et le resultat peut varier fortement (visage preserve ou non
+# sur des prompts quasi identiques, cf. commentaires dans HAIRSTYLES) ce qui
+# rend impossible de distinguer un effet du prompt d'un simple coup de
+# chance. Change SEED pour explorer d'autres resultats a prompt fixe.
+#
+# Test de controle fait avec seed=0 sur brushing_frange_femme et curly_femme
+# (memes prompts que sur des runs precedents en seed aleatoire) :
+# - brushing_frange_femme (vocabulaire "blowout/face-framing/sleek") : derive
+#   du visage a chaque fois, seed aleatoire ou seed=0 -> effet robuste du
+#   vocabulaire, independant du seed.
+# - curly_femme (vocabulaire "curly/ringlet") : visage preserve sur 2 runs a
+#   seed aleatoire, mais derive (age y compris : "girl" rendu comme une
+#   enfant) avec seed=0 -> donc PAS un effet purement deterministe du
+#   vocabulaire dans ce cas, le seed a aussi son mot a dire. Conclusion
+#   affinee : certains prompts ont un vocabulaire qui pousse la derive assez
+#   fort pour l'emporter sur (presque) tous les seeds (cas blowout), d'autres
+#   sont proches d'un seuil ou le seed peut faire basculer le resultat (cas
+#   curly). A creuser plus tard : tester plusieurs seeds a prompt fixe sur
+#   curly_femme pour estimer ce seuil, si la preservation d'identite devient
+#   prioritaire sur ce style.
+SEED = 0
 
-# Clause de preservation d'identite, ajoutee automatiquement a TOUS les
-# prompts (cf. main()), quel que soit le style. Le but du projet est que
-# l'utilisateur se reconnaisse avec une coiffure differente, pas de generer
-# une personne differente. Sans cette clause, un prompt qui decrit une
-# coiffure via un vocabulaire fortement genre ("long", "face-framing",
-# "sleek and neatly styled"...) peut faire deriver le modele vers un tout
-# autre visage/genre (constate et reproduit 2 fois sur "brushing_frange"
-# v3, corrige en v4 avec cette clause -> voir kontext_brushing_frange_run11_v4.png,
-# le rendu le plus proche du cahier des charges obtenu jusqu'ici).
-IDENTITY_GUARD = " Keep the same face and identity unchanged."
+# Note : on a teste une clause IDENTITY_GUARD ("Keep the same face and
+# identity unchanged.") ajoutee automatiquement a tous les prompts, pour
+# eviter que le modele ne derive vers un visage/genre different. Retiree :
+# resultat pas fiable (parfois ignoree par le modele, cf. "brushing_frange_femme"
+# et "curly_femme" -> comportement different sur des prompts quasi
+# identiques, pas de seed fixee donc pas totalement reproductible). Le genre
+# de la personne est desormais mentionne explicitement dans chaque prompt
+# de HAIRSTYLES quand c'est pertinent, plutot que de compter sur une clause
+# generique.
 
 # Coiffures disponibles : cle -> (prompt envoye au modele, LoRA optionnel).
 # Le LoRA "broccoli" est un fine-tuning specifique a cette forme -> il biaise
@@ -94,23 +116,41 @@ HAIRSTYLES = {
         # le declencheur de la derive de genre est bien le vocabulaire
         # "long past the shoulders" + "face-framing" + "sleek and neatly
         # styled" de v3, pas juste le bonnet qui masque les vrais cheveux.
-        # v4 : reprend la longueur/lisse de v3, retire "face-framing" ;
-        # IDENTITY_GUARD (ajoutee automatiquement, cf. plus haut) fait le
-        # reste -> meilleur resultat obtenu (visage/lunettes/barbe intacts).
-        "Change hairstyle to a long, sleek blowout past the shoulders with "
-        "soft bangs and gentle loose waves, neatly styled.",
+        # v4 : reprend la longueur/lisse de v3, retire "face-framing", genre
+        # mentionne explicitement ("This is a man.") plutot que de compter
+        # sur une clause de preservation d'identite generique (abandonnee,
+        # cf. note plus haut).
+        "This is a man. Change his hairstyle to a long, sleek blowout past "
+        "the shoulders with soft bangs and gentle loose waves, neatly "
+        "styled.",
         None,
     ),
     "brushing_frange_femme": (
-        # Meme coiffure que v4, mais en assumant explicitement le genre
-        # plutot que de demander de le preserver -> teste si le fait de
-        # lever l'ambiguite (au lieu de lutter contre le biais du modele)
-        # donne un edit plus propre/coherent. Resultat : "This is a woman"
-        # l'emporte sur IDENTITY_GUARD, le visage change quand meme -> a
-        # eviter si l'objectif est de se reconnaitre (garde pour reference).
+        # Meme coiffure que v4, mais en genre feminin -> visage attendu
+        # different de l'utilisateur (voulu ici).
         "This is a woman. Change her hairstyle to a long, sleek blowout "
         "past the shoulders with soft bangs and gentle loose waves, neatly "
         "styled.",
+        None,
+    ),
+    "curly": (
+        # Vocabulaire neutre/court, sans les mots ayant cause des derives
+        # sur brushing_frange ("voluminous", "wispy", "face-framing").
+        # "curly hair" seul est reparti sur une texture afro herissee -> pas
+        # le look voulu (boucles definies, pas crepu). Genre mentionne
+        # explicitement, comme brushing_frange v4.
+        "This is a man. Change his hairstyle to natural curly hair, medium "
+        "length, neatly styled.",
+        None,
+    ),
+    "curly_femme": (
+        # Demande explicitement une femme, visage different de l'utilisateur
+        # attendu (voulu ici). "well-defined ringlet curls, not frizzy, not
+        # afro-textured" pour eviter la derive vers l'afro herissee
+        # constatee sur le style "curly".
+        "This is a girl. Change her hairstyle to well-defined curly hair, "
+        "spiral ringlet curls, not frizzy, not afro-textured, medium "
+        "length, neatly styled.",
         None,
     ),
 }
@@ -156,7 +196,6 @@ def main():
     if style not in HAIRSTYLES:
         sys.exit(f"Coiffure inconnue: {style!r}. Choix possibles: {', '.join(HAIRSTYLES)}")
     prompt, lora_repo = HAIRSTYLES[style]
-    prompt += IDENTITY_GUARD
 
     print(f"-> chargement du pipeline (transformer en FP8 torchao, coiffure={style})...")
     pipe = build_pipe(lora_repo=lora_repo)
@@ -182,21 +221,24 @@ def main():
 
     pipe.transformer.forward = patched_forward
 
+    generator = torch.Generator(device="cuda").manual_seed(SEED)
+
     print(f"-> prompt: {prompt!r}")
-    print(f"-> generation ({NUM_STEPS} steps, EFFICIENT_ATTENTION force sur le transformer uniquement)...")
+    print(f"-> generation ({NUM_STEPS} steps, seed={SEED}, EFFICIENT_ATTENTION force sur le transformer uniquement)...")
     result = pipe(
         image=image, prompt=prompt, guidance_scale=2.5, num_inference_steps=NUM_STEPS,
+        generator=generator,
     ).images[0]
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = f"{OUT_DIR}/kontext_{style}_{timestamp}.png"
     result.save(out_path)
     print("->", out_path)
 
-    log_line = "\t".join([timestamp, style, out_path, lora_repo or "-", prompt])
+    log_line = "\t".join([timestamp, style, out_path, lora_repo or "-", f"seed={SEED}", prompt])
     is_new_log = not os.path.exists(GENERATION_LOG)
     with open(GENERATION_LOG, "a", encoding="utf-8") as f:
         if is_new_log:
-            f.write("\t".join(["timestamp", "style", "fichier", "lora", "prompt"]) + "\n")
+            f.write("\t".join(["timestamp", "style", "fichier", "lora", "seed", "prompt"]) + "\n")
         f.write(log_line + "\n")
     print("-> logge dans", GENERATION_LOG)
 
