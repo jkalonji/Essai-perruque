@@ -6,3 +6,6 @@ HairFastGAN/
 __pycache__/
 *.pyc
 .venv/
+
+# État local d'outils (agents IA, etc.), pas du code du projet.
+.claude/
