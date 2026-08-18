@@ -183,9 +183,9 @@ rouvrir le log de chaque run. Fichier texte à colonnes, lisible avec
 `cabine_server.py` en fait un petit service web qui garde le pipeline FLUX
 chargé en mémoire pour toute la session (au lieu de le recharger à chaque
 photo) et sert une interface mobile en 5 écrans (`cabine/`) : mot de passe →
-photo caméra → choix d'une forme (5 cartes) puis d'une couleur (3 pastilles,
-sauf sur `broccoli`) → attente → résultat avant/après. Spec complète :
-`specs/cabine-coiffure-ia.html`.
+photo caméra → choix d'une forme (5 cartes : brushing/attaché/frange/raie au
+milieu/bouclé) puis d'une couleur (3 pastilles) → attente (avec compte à
+rebours) → résultat. Spec complète : `specs/cabine-coiffure-ia.html`.
 
 ### Lancer en local
 

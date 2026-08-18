@@ -44,10 +44,47 @@ SESSIONS_DIR = "server_sessions"
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 
 PASSWORD = os.environ.get("CABINE_PASSWORD", "coiffure2026")
-RECOLOR_PYTHON = os.environ.get("CABINE_RECOLOR_PYTHON", "python")
+
+
+def resolve_recolor_python():
+    """Trouve un interpreteur Python qui a cv2+mediapipe pour recolor_hair.py.
+
+    "python" ne resout pas forcement vers le bon interpreteur (selon le
+    terminal, le PATH peut faire passer le .venv FLUX en premier, qui n'a
+    pas cv2/mediapipe -> le sous-processus echouerait silencieusement cote
+    UI, cf. bug remonte en session). On le verifie une fois au demarrage
+    plutot que de decouvrir le probleme au premier essai couleur d'un
+    testeur, et on log clairement l'interpreteur retenu.
+    """
+    override = os.environ.get("CABINE_RECOLOR_PYTHON")
+    candidates = [override] if override else ["python", "python3", "py"]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            proc = subprocess.run(
+                [candidate, "-c", "import cv2, mediapipe"],
+                capture_output=True, text=True, timeout=15,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+        if proc.returncode == 0:
+            print(f"-> couleur (recolor_hair.py) : interpreteur '{candidate}' OK (cv2+mediapipe trouves)")
+            return candidate
+        print(f"!! '{candidate}' resout vers un interpreteur SANS cv2/mediapipe -> essai suivant")
+        print(proc.stderr.strip()[-500:])
+    print(
+        "!! ATTENTION: aucun interpreteur Python avec cv2+mediapipe trouve -> "
+        "la couleur (post-traitement) va echouer sur tous les essais. "
+        "Surcharge avec CABINE_RECOLOR_PYTHON=<chemin vers le python systeme>."
+    )
+    return override or "python"
+
+
+RECOLOR_PYTHON = resolve_recolor_python()
 
 # Sous-ensemble de HAIRSTYLES expose au testeur : les 5 "formes" de la
-# matrice forme x couleur (spec section 07). curly/curly_femme/
+# matrice forme x couleur (spec section 07). curly_femme/
 # brushing_frange_femme restent des styles d'exploration CLI (genre
 # different de l'utilisateur, hors sujet pour une cabine d'essai) -> pas
 # exposes ici.
@@ -56,7 +93,7 @@ APP_STYLES = [
     {"id": "attache", "label": "Attaché", "needs_color": True},
     {"id": "frange", "label": "Frange", "needs_color": True},
     {"id": "raie_milieu", "label": "Raie au milieu", "needs_color": True},
-    {"id": "broccoli", "label": "Broccoli", "needs_color": False},
+    {"id": "curly", "label": "Bouclé", "needs_color": True},
 ]
 APP_STYLE_IDS = {s["id"] for s in APP_STYLES}
 
@@ -277,13 +314,23 @@ def api_recolor(job_id):
 
     # recolor_hair.py ecrit son resultat a cote de l'image source, nomme
     # d'apres son prefixe -> pour "shape.png" ca donne "shape_<color>.jpg".
+    # cwd fixe explicitement sur le dossier du script : le sous-processus ne
+    # doit pas dependre du repertoire courant du process serveur (peut
+    # varier selon comment/d'ou cabine_server.py a ete lance).
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
     proc = subprocess.run(
         [RECOLOR_PYTHON, "recolor_hair.py", job.shape_path, color],
-        capture_output=True, text=True,
+        capture_output=True, text=True, cwd=repo_dir,
     )
+    # log systematique (pas seulement en cas d'echec) -> inclut le
+    # garde-fou "masque de cheveux suspect" de recolor_hair.py, utile pour
+    # comprendre un rendu couleur silencieusement rate sans erreur HTTP.
+    if proc.stdout.strip():
+        print("-> recolor_hair.py:", proc.stdout.strip())
     if proc.returncode != 0:
-        print("!! echec recolor_hair.py:", proc.stderr[-2000:])
-        return jsonify(error="echec du post-traitement couleur"), 500
+        print(f"!! echec recolor_hair.py (interpreteur={RECOLOR_PYTHON!r}, code={proc.returncode}):")
+        print(proc.stderr[-2000:])
+        return jsonify(error=f"echec du post-traitement couleur : {proc.stderr.strip()[-300:]}"), 500
 
     out_path = os.path.join(os.path.dirname(job.shape_path), f"shape_{color}.jpg")
     if not os.path.exists(out_path):

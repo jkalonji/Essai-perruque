@@ -284,6 +284,13 @@
     </div>
   </div>
 
+  <div class="callout decided">
+    <div class="callout-inner">
+      <span class="tag">changelog v3</span>
+      <p><code>broccoli</code> retiré des 5 cartes exposées au testeur, remplacé par <code>curly</code> (bouclé) — retour d'usage : le LoRA broccoli imposait une texture trop particulière/peu flatteuse pour une démo, alors que <code>curly</code> (déjà validé en exploration, cf. §07) reste dans l'esprit forme×couleur (pas de LoRA, couleur paramétrable normalement). Le style <code>broccoli</code> reste disponible en CLI (<code>run_kontext.py broccoli</code>), juste plus exposé dans <code>cabine_server.py</code>/<code>cabine/</code>.</p>
+    </div>
+  </div>
+
   <section>
     <p class="section-no">01</p>
     <h2>Objectif</h2>
@@ -418,7 +425,7 @@
       </li>
       <li>
         <span class="screen-title">Choix de la forme, puis de la couleur</span>
-        <span class="screen-desc">5 cartes de forme (brushing / attaché / frange / raie au milieu / broccoli, §07). Sauf sur broccoli, un second choix apparaît ensuite : 3 pastilles de couleur (brun foncé / brun / blond).</span>
+        <span class="screen-desc">5 cartes de forme (brushing / attaché / frange / raie au milieu / bouclé, §07). Un second choix apparaît ensuite pour toutes : 3 pastilles de couleur (brun foncé / brun / blond).</span>
       </li>
       <li>
         <span class="screen-title">Attente</span>
@@ -494,8 +501,8 @@
       </div>
     </div>
 
-    <h3>Broccoli — option à part</h3>
-    <p>Gardé tel quel comme 5ᵉ carte, en dehors de la matrice : le LoRA <code>fal/Broccoli-Hair-Kontext-Dev-LoRA</code> impose sa propre texture quel que soit le prompt, donc pas de couleur paramétrable dessus. Un seul essai à ce jour (<code>results/kontext_broccoli_test.png</code>) → <span class="status warn">à confirmer</span> avant de l'afficher.</p>
+    <h3>Bouclé (<code>curly</code>) — 5ᵉ carte</h3>
+    <p>Remplace <code>broccoli</code> (changelog v3 ci-dessus) : reste dans la matrice forme×couleur normale (pas de LoRA, couleur paramétrable comme les 4 autres). Prompt déjà validé en exploration (<code>results/kontext_curly_20260818_002415.png</code>) : identité et lunettes préservées au seed fixe — texture obtenue plus proche d'un afro gonflé que de boucles bien définies, mais résultat exploitable tel quel pour cette démo.</p>
   </section>
 
   <section>
@@ -531,9 +538,9 @@
             <td>Le testeur n'a qu'un résultat statique avant/après pour cette session, pas d'essai « en bougeant la tête »</td>
           </tr>
           <tr>
-            <td>Broccoli gardé comme carte fixe à part</td>
-            <td>Garde ce style déjà en place sans travail supplémentaire</td>
-            <td>Pas de couleur paramétrable dessus — une carte « spéciale » au milieu de cartes paramétrables, UI un peu moins uniforme</td>
+            <td><code>broccoli</code> remplacé par <code>curly</code> (changelog v3)</td>
+            <td>5 cartes toutes uniformes (forme + couleur), plus de cas particulier dans l'UI</td>
+            <td>Aucun — <code>broccoli</code> reste disponible en CLI si besoin plus tard</td>
           </tr>
         </tbody>
       </table>
@@ -566,7 +573,7 @@
     <ol>
       <li><span class="status ok">fait</span> — Écrire les 3 nouveaux prompts de forme (<code>attache</code>, <code>frange</code>, <code>raie_milieu</code>) et les valider sur GPU (voir §07 : <code>frange</code> validé, <code>attache</code>/<code>raie_milieu</code> partiels)</li>
       <li><span class="status ok">fait</span> — Adapter <code>recolor_hair.py</code> pour tourner sur une image générée par FLUX : accepte un chemin d'image en argument, écrit à côté de la source, 3 couleurs pleines (<code>brun_fonce</code>/<code>brun</code>/<code>blond</code>) ajoutées</li>
-      <li><span class="status ok">fait</span> — <code>cabine_server.py</code> : serveur Flask qui garde le pipeline FLUX chargé, file d'attente une génération à la fois, swap de LoRA automatique pour <code>broccoli</code></li>
+      <li><span class="status ok">fait</span> — <code>cabine_server.py</code> : serveur Flask qui garde le pipeline FLUX chargé, file d'attente une génération à la fois, swap de LoRA automatique si un style avec LoRA est exposé (aucun des 5 actuels n'en utilise depuis le remplacement de <code>broccoli</code> par <code>curly</code>)</li>
       <li><span class="status ok">fait</span> — <code>cabine/</code> : les 5 écrans mobiles (§05), caméra reprise de <code>webapp/capture.js</code> mais envoyant la photo au serveur</li>
       <li><span class="status ok">fait</span> — file d'attente (une génération à la fois) intégrée à <code>cabine_server.py</code></li>
       <li><span class="status ok">fait</span> — test à blanc en local via <code>curl</code> (mot de passe → upload → génération → couleur) : chaîne complète validée de bout en bout sur <code>localhost:8080</code></li>

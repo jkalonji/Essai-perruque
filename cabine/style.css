@@ -273,3 +273,8 @@ main.centered {
   font-size: 0.85rem;
   text-align: center;
 }
+
+.status.error {
+  color: var(--error);
+  font-weight: 600;
+}

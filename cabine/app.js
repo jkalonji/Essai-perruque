@@ -339,6 +339,7 @@ function setAfterImage(url) {
 async function applyColor(color, btn) {
   [...els5.colorGrid.children].forEach((c) => c.classList.remove("active"));
   btn.classList.add("active");
+  els5.status.classList.remove("error");
   els5.status.textContent = "Application de la couleur…";
   try {
     const res = await fetch(`/api/recolor/${state.jobId}`, {
@@ -355,7 +356,12 @@ async function applyColor(color, btn) {
     els5.status.textContent = "";
   } catch (e) {
     console.error(e);
-    els5.status.textContent = "❌ " + e.message;
+    // classe .error (rouge, bien visible) plutot que le gris discret par
+    // defaut de .status -> l'echec passait inapercu sous les boutons
+    // (bug remonte : "les couleurs ne s'appliquent pas" sans que l'erreur
+    // affichee n'ait ete vue).
+    els5.status.classList.add("error");
+    els5.status.textContent = "❌ Échec de la couleur : " + e.message;
   }
 }
 
