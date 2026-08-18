@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cabine coiffure IA</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- écran 1 : accueil & consentement -->
+  <section id="screen-welcome" class="screen">
+    <header>
+      <h1>💇 Cabine coiffure IA</h1>
+      <p class="subtitle">
+        Prends-toi en photo, choisis une coiffure, et reçois un rendu généré
+        par IA (FLUX.1-Kontext) — en quelques minutes.
+      </p>
+    </header>
+    <main class="centered">
+      <div class="card">
+        <p>
+          Ta photo est traitée sur l'ordinateur du créateur de ce test (pas
+          de cloud tiers) et n'est utilisée que pour cette session.
+        </p>
+        <p>
+          Une génération prend <strong>2 à 4 minutes</strong> — le GPU
+          travaille vraiment, ce n'est pas figé.
+        </p>
+        <label class="field">
+          <span>Mot de passe</span>
+          <input id="password" type="password" autocomplete="off" placeholder="••••••••" />
+        </label>
+        <p id="welcomeError" class="error"></p>
+        <button id="startBtn" class="btn primary wide">Commencer →</button>
+      </div>
+    </main>
+  </section>
+
+  <!-- écran 2 : prise de photo -->
+  <section id="screen-photo" class="screen" hidden>
+    <header>
+      <h1>📷 Prends ta photo</h1>
+      <p class="subtitle">Visage dégagé, de face, bien éclairé.</p>
+    </header>
+    <main class="centered">
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="frozen" class="hidden-canvas"></canvas>
+          <div id="hint" class="hint">Autorise la caméra pour commencer…</div>
+        </div>
+        <div class="stage-actions" id="liveActions">
+          <button id="shootBtn" class="btn primary" disabled>⚪ Prendre la photo</button>
+        </div>
+        <div class="stage-actions" id="reviewActions" hidden>
+          <button id="retakeBtn" class="btn">↺ Reprendre</button>
+          <button id="usePhotoBtn" class="btn primary">Utiliser cette photo →</button>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- écran 3 : choix forme puis couleur -->
+  <section id="screen-choice" class="screen" hidden>
+    <header>
+      <h1>✂️ Choisis une coiffure</h1>
+      <p class="subtitle" id="choiceSubtitle">Quelle forme veux-tu essayer ?</p>
+    </header>
+    <main class="centered">
+      <div class="option-grid" id="styleGrid"></div>
+      <div id="colorStep" hidden>
+        <p class="section-label">Puis une couleur</p>
+        <div class="option-grid" id="colorGrid"></div>
+      </div>
+      <button id="generateBtn" class="btn primary wide" hidden>Générer →</button>
+    </main>
+  </section>
+
+  <!-- écran 4 : attente -->
+  <section id="screen-wait" class="screen" hidden>
+    <header>
+      <h1>⏳ Ça travaille…</h1>
+    </header>
+    <main class="centered">
+      <div class="card">
+        <div class="spinner"></div>
+        <p id="waitTimer" class="timer">2:00</p>
+        <p id="waitMessage">En file d'attente…</p>
+        <p class="muted">
+          Compte 2 à 4 minutes réelles de calcul GPU — le rendu le plus
+          réaliste de ce projet prend ce temps-là, pas un raccourci.
+        </p>
+      </div>
+    </main>
+  </section>
+
+  <!-- écran 5 : résultat -->
+  <section id="screen-result" class="screen" hidden>
+    <header>
+      <h1>✨ Résultat</h1>
+    </header>
+    <main class="centered">
+      <figure class="result-figure">
+        <img id="resultAfter" alt="Résultat" />
+      </figure>
+      <div class="option-grid" id="resultColorGrid" hidden></div>
+      <div class="stage-actions">
+        <a id="downloadBtn" class="btn primary" download="cabine_coiffure.png">💾 Télécharger</a>
+        <button id="newStyleBtn" class="btn">✂️ Changer de forme</button>
+      </div>
+      <p id="resultStatus" class="status"></p>
+    </main>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

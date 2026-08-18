@@ -177,6 +177,55 @@ retrouver quel prompt exact (et quel seed) a produit quelle image sans
 rouvrir le log de chaque run. Fichier texte à colonnes, lisible avec
 `cat`/`less`/un tableur.
 
+## Cabine coiffure IA — partager l'essai par lien (téléphone)
+
+`run_kontext.py` est un script CLI : pas de serveur, pas de lien à partager.
+`cabine_server.py` en fait un petit service web qui garde le pipeline FLUX
+chargé en mémoire pour toute la session (au lieu de le recharger à chaque
+photo) et sert une interface mobile en 5 écrans (`cabine/`) : mot de passe →
+photo caméra → choix d'une forme (5 cartes) puis d'une couleur (3 pastilles,
+sauf sur `broccoli`) → attente → résultat avant/après. Spec complète :
+`specs/cabine-coiffure-ia.html`.
+
+### Lancer en local
+
+```bash
+".venv/Scripts/python.exe" cabine_server.py
+```
+
+Ouvre <http://localhost:8080>. Mot de passe par défaut `coiffure2026`
+(surcharger avec la variable d'environnement `CABINE_PASSWORD`). Une seule
+génération à la fois : les requêtes suivantes patientent en file — pas de
+gestion de plusieurs testeurs simultanés (hors scope, voir le spec §09).
+
+La couleur est un post-traitement `recolor_hair.py` exécuté en sous-processus
+avec le **Python système** (celui qui a `cv2`/`mediapipe`), pas le `.venv`
+dédié à FLUX — les deux environnements sont volontairement séparés (torch/
+diffusers d'un côté, opencv/mediapipe de l'autre). Si `python` ne résout pas
+vers le bon interpréteur sur ta machine, surcharge avec
+`CABINE_RECOLOR_PYTHON`.
+
+### Partager par lien (tunnel)
+
+L'accès caméra (`getUserMedia`) exige HTTPS sur mobile — un simple partage
+d'IP locale ne suffit pas. [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+(installé via `winget install Cloudflare.cloudflared`) donne une URL HTTPS
+publique directement :
+
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+
+Si `cloudflared` n'est pas reconnu juste après l'installation, ouvre un
+nouveau terminal (le `PATH` n'est mis à jour que dans les nouvelles
+fenêtres) — ou lance-le directement via son chemin complet :
+`"C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:8080`.
+
+⚠️ Ça expose le GPU de cette machine à quiconque a le lien (protection = le
+mot de passe partagé uniquement, voir spec §06/§08) — à ne lancer qu'au
+moment d'une session avec un testeur, pas à laisser tourner en continu. Le
+lien meurt dès que le tunnel ou le PC s'arrête.
+
 ## Quelle méthode utiliser ?
 
 | Besoin | Outil |
@@ -185,6 +234,7 @@ rouvrir le log de chaque run. Fichier texte à colonnes, lisible avec
 | Juste tester une **couleur/mèches** sur ta vraie coiffure actuelle | `recolor_hair.py` |
 | Tester une **frange**, rendu rapide mais approximatif | `add_fringe.py` |
 | Tester une **coiffure décrite en texte libre**, rendu le plus réaliste (GPU requis) | `run_kontext.py` |
+| Partager l'essai de coiffure IA **par lien**, depuis un téléphone | `cabine_server.py` + `cabine/` |
 
 ## Limites (c'est un prototype simple)
 

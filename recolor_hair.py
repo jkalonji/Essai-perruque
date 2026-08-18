@@ -17,16 +17,55 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision
 from PIL import Image, ImageDraw, ImageFont
 import os
+import sys
 
-SRC = "images/moi.jpg"
+# Par defaut tourne sur la photo brute, mais accepte n'importe quelle image
+# en argument -> sert aussi a poster-traiter une image DEJA generee par
+# run_kontext.py (couleur decouplee de la forme, cf. specs/cabine-coiffure-ia.html
+# section 07 : la forme passe par FLUX, la couleur est un post-traitement Lab
+# instantane applique ensuite, ici, sur le resultat FLUX plutot que sur la
+# photo brute).
+# Argument 2 optionnel : id d'un seul look (parmi LOOKS/FULL_COLORS) a
+# produire, au lieu de tous -> mode utilise par cabine_server.py (couleur
+# choisie par le testeur, un seul rendu a la fois, pas besoin des autres).
+if len(sys.argv) > 1:
+    SRC = sys.argv[1]
+    # Image explicite -> ecrit a cote d'elle (pas dans results/) : c'est ce
+    # chemin que prend cabine_server.py sur une image de
+    # server_sessions/<job_id>/, ou une image de results/ passee a la main.
+    OUT_DIR = os.path.dirname(SRC) or "."
+else:
+    SRC = "images/moi.jpg"
+    OUT_DIR = "results"
+ONLY_LOOK = sys.argv[2] if len(sys.argv) > 2 else None
 MODEL = "models/hair_segmenter.tflite"
-OUT_DIR = "results"
 os.makedirs(OUT_DIR, exist_ok=True)
+# Prefixe de sortie derive du nom du fichier d'entree (sans extension) ->
+# evite d'ecraser miel_caramel.jpg/reflets_cuivres.jpg a chaque run quand on
+# enchaine plusieurs formes FLUX differentes (ex. kontext_frange_xxx.png ->
+# kontext_frange_xxx_miel_caramel.jpg).
+OUT_PREFIX = os.path.splitext(os.path.basename(SRC))[0]
 
+# Mèches/reflets partiels (densite de couverture basse, cf. streak_pattern) --
+# usage exploratoire d'origine, gardes pour l'usage CLI manuel (README
+# "Tester une couleur / des mèches").
 LOOKS = [
-    {"id": "miel_caramel", "label": "Mèches miel / caramel", "color_bgr": (92, 163, 204), "lighten": 55},
-    {"id": "reflets_cuivres", "label": "Reflets cuivrés / roux", "color_bgr": (58, 92, 185), "lighten": 40},
+    {"id": "miel_caramel", "label": "Mèches miel / caramel", "color_bgr": (92, 163, 204), "lighten": 55, "density": 0.3},
+    {"id": "reflets_cuivres", "label": "Reflets cuivrés / roux", "color_bgr": (58, 92, 185), "lighten": 40, "density": 0.3},
 ]
+
+# Couleurs pleines (densite de couverture haute -> quasi toute la chevelure,
+# pas juste des mèches) -- les 3 pastilles de couleur de la cabine coiffure
+# IA (specs/cabine-coiffure-ia.html section 07), appliquees apres la forme
+# generee par FLUX. "lighten" monte avec la clarte visee car la photo source
+# part de cheveux noirs.
+FULL_COLORS = [
+    {"id": "brun_fonce", "label": "Brun foncé", "color_bgr": (24, 32, 46), "lighten": 15, "density": 0.92},
+    {"id": "brun", "label": "Brun", "color_bgr": (33, 55, 92), "lighten": 40, "density": 0.92},
+    {"id": "blond", "label": "Blond", "color_bgr": (90, 150, 197), "lighten": 95, "density": 0.92},
+]
+
+ALL_LOOKS = {look["id"]: look for look in LOOKS + FULL_COLORS}
 
 
 def get_hair_mask(bgr):
@@ -47,6 +86,18 @@ def get_hair_mask(bgr):
         mask_u8 = np.where(labels == biggest, 255, 0).astype(np.uint8)
 
     alpha = cv2.GaussianBlur(mask_u8, (15, 15), 0).astype(np.float32) / 255.0
+
+    # Garde-fou : sur certaines coiffures generees par FLUX (constate sur un
+    # bowl-cut/frange bien plaque), le segmenter ne reconnait qu'une infime
+    # partie des cheveux comme telle (texture/eclairage inhabituels pour un
+    # modele entraine sur photos reelles) -> le rendu colore serait alors
+    # quasi invisible sans que rien ne l'indique. On le signale plutot que
+    # de laisser un resultat silencieusement casse.
+    coverage_pct = 100 * float((mask_u8 > 0).sum()) / mask_u8.size
+    if coverage_pct < 2.0:
+        print(f"!! ATTENTION: masque de cheveux suspect ({coverage_pct:.2f}% de l'image) "
+              f"-> la segmentation a probablement echoue sur cette image, le rendu colore "
+              f"risque d'etre quasi invisible.")
     return alpha
 
 
@@ -70,9 +121,9 @@ def streak_pattern(h, w, seed=0, density=0.3, edge=0.10):
     return weight
 
 
-def apply_look(bgr, hair_alpha, color_bgr, lighten, seed):
+def apply_look(bgr, hair_alpha, color_bgr, lighten, seed, density=0.3, edge=0.10):
     h, w = bgr.shape[:2]
-    streaks = streak_pattern(h, w, seed=seed, density=0.3, edge=0.10)
+    streaks = streak_pattern(h, w, seed=seed, density=density, edge=edge)
     weight = (hair_alpha * streaks).astype(np.float32)[..., None]  # HxWx1
 
     # Lab : a/b sont des axes de chrominance linéaires (pas d'effet "arc-en-ciel"
@@ -110,24 +161,46 @@ def label_strip(images_bgr, labels, out_path):
 
 
 def main():
+    if ONLY_LOOK and ONLY_LOOK not in ALL_LOOKS:
+        sys.exit(f"Couleur inconnue: {ONLY_LOOK!r}. Choix possibles: {', '.join(ALL_LOOKS)}")
+
     bgr = cv2.imread(SRC)
     if bgr is None:
         raise FileNotFoundError(SRC)
     hair_alpha = get_hair_mask(bgr)
+
+    if ONLY_LOOK:
+        # Mode "un seul look" : pas de mire de comparaison, juste le rendu
+        # demande -> rapide, c'est le chemin pris par cabine_server.py quand
+        # le testeur choisit une couleur sur un resultat FLUX deja genere.
+        look = ALL_LOOKS[ONLY_LOOK]
+        out = apply_look(
+            bgr, hair_alpha, look["color_bgr"], look["lighten"], seed=1,
+            density=look.get("density", 0.3),
+        )
+        path = os.path.join(OUT_DIR, f"{OUT_PREFIX}_{look['id']}.jpg")
+        cv2.imwrite(path, out, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        print("->", path)
+        return
+
     cv2.imwrite(os.path.join(OUT_DIR, "_debug_hair_mask.png"), (hair_alpha * 255).astype(np.uint8))
 
     outputs = [bgr]
     labels = ["Original"]
     for i, look in enumerate(LOOKS):
-        out = apply_look(bgr, hair_alpha, look["color_bgr"], look["lighten"], seed=i + 1)
-        path = os.path.join(OUT_DIR, f"{look['id']}.jpg")
+        out = apply_look(
+            bgr, hair_alpha, look["color_bgr"], look["lighten"], seed=i + 1,
+            density=look.get("density", 0.3),
+        )
+        path = os.path.join(OUT_DIR, f"{OUT_PREFIX}_{look['id']}.jpg")
         cv2.imwrite(path, out, [cv2.IMWRITE_JPEG_QUALITY, 95])
         print("->", path)
         outputs.append(out)
         labels.append(look["label"])
 
-    label_strip(outputs, labels, os.path.join(OUT_DIR, "comparaison.jpg"))
-    print("-> comparaison:", os.path.join(OUT_DIR, "comparaison.jpg"))
+    comparaison_path = os.path.join(OUT_DIR, f"{OUT_PREFIX}_comparaison.jpg")
+    label_strip(outputs, labels, comparaison_path)
+    print("-> comparaison:", comparaison_path)
 
 
 if __name__ == "__main__":

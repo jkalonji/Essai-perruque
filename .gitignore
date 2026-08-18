@@ -18,3 +18,18 @@ models/flux_kontext_transformer_fp8/
 results/_kontext_*.log
 results/_run*_start.txt
 results/_run*_timing.txt
+
+# Photos des testeurs de la cabine coiffure IA (cabine_server.py) + resultats
+# generes pendant une session -> donnees personnelles d'un tiers, jamais
+# commitees (voir specs/cabine-coiffure-ia.html).
+server_sessions/
+
+# Photos generees par run_kontext.py (visage reel de l'auteur avec diverses
+# coiffures IA) -> jamais commitees jusqu'ici (seul generation_log.tsv,
+# le log texte, l'est), le depot etant public sur GitHub. Le nom de fichier
+# suffit a savoir ce qui a ete teste ; les images elles-memes restent
+# locales. Meme logique pour how_to_prompt_this/ (photos d'essais de
+# prompts, meme nature).
+results/kontext_*.png
+results/kontext_*.jpg
+how_to_prompt_this/

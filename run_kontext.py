@@ -153,6 +153,46 @@ HAIRSTYLES = {
         "length, neatly styled.",
         None,
     ),
+    # 3 styles ajoutes pour la matrice forme x couleur de specs/cabine-coiffure-ia.html
+    # (section 07). Meme logique que "brushing_frange" : identite attendue
+    # preservee (donc genre explicite "This is a man.", pas de vocabulaire
+    # a risque identifie -- "long past the shoulders"/"face-framing"/"sleek").
+    "attache": (
+        # v1 "Tie his hair back into a low, smooth ponytail" -> aucun effet,
+        # bonnet inchange : la photo source porte un bonnet satin (pas de
+        # cheveux visibles a "attacher"), et le phrasage "tie back" suppose
+        # une action sur des cheveux existants plutot qu'un remplacement.
+        # v2 (retenue) : meme gabarit que frange/raie_milieu ("Change his
+        # hairstyle to...", qui marchent tous les deux malgre le bonnet)
+        # plutot qu'une action physique -> bonnet retire, identite/barbe
+        # preservees, MAIS resultat rendu comme un slick-back court plutot
+        # qu'une vraie queue de cheval basse (le modele semble deduire une
+        # longueur de cheveux courte/moyenne sous le bonnet ; obtenir une
+        # vraie ponytail demanderait sans doute de preciser "long hair"
+        # d'abord). Lunettes disparues, comme sur raie_milieu -> a
+        # investiguer (cf. note plus bas).
+        "This is a man. Change his hairstyle to hair tied back into a low, "
+        "smooth ponytail, neatly styled.",
+        None,
+    ),
+    "frange": (
+        # v1 (retenue au premier essai) : identite bien preservee (lunettes,
+        # barbe, visage intacts), frange nette obtenue.
+        "This is a man. Change his hairstyle to add a straight fringe "
+        "across the forehead.",
+        None,
+    ),
+    "raie_milieu": (
+        # v1 (retenue) : visage/barbe preserves, coiffure conforme, MAIS les
+        # lunettes disparaissent (contrairement a frange/brushing_frange qui
+        # les gardent) -> pas encore identifie si c'est le vocabulaire
+        # ("clean"/"sleek") ou juste ce seed ; meme symptome observe sur
+        # attache v2. A tester : mention explicite "Keep his glasses." avant
+        # de generaliser une clause d'accessoires a tous les styles.
+        "This is a man. Change his hairstyle to a clean center part, "
+        "straight and sleek.",
+        None,
+    ),
 }
 DEFAULT_STYLE = "brushing_frange"
 
@@ -191,6 +231,22 @@ def build_pipe(lora_repo=None):
     return pipe
 
 
+def patch_attention(pipe):
+    # Seul le transformer Flux (boucle de denoising, NUM_STEPS appels) beneficie du
+    # forcage EFFICIENT_ATTENTION. Le T5 (encodage du texte, 1 seul appel)
+    # utilise un biais de position relatif incompatible avec ce backend -> on
+    # le laisse sur le dispatch automatique (MATH), sans impact sur la vitesse
+    # globale puisqu'il ne tourne qu'une fois. Factorise hors de main() pour
+    # etre reutilise par cabine_server.py (meme pipeline, meme optimisation).
+    orig_forward = pipe.transformer.forward
+
+    def patched_forward(*args, **kwargs):
+        with sdpa_kernel(SDPBackend.EFFICIENT_ATTENTION):
+            return orig_forward(*args, **kwargs)
+
+    pipe.transformer.forward = patched_forward
+
+
 def main():
     style = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_STYLE
     if style not in HAIRSTYLES:
@@ -208,18 +264,7 @@ def main():
         image = image.resize(new_size)
         print(f"-> image redimensionnee a {new_size} (limite VRAM)")
 
-    # Seul le transformer Flux (boucle de denoising, NUM_STEPS appels) beneficie du
-    # forcage EFFICIENT_ATTENTION. Le T5 (encodage du texte, 1 seul appel)
-    # utilise un biais de position relatif incompatible avec ce backend -> on
-    # le laisse sur le dispatch automatique (MATH), sans impact sur la vitesse
-    # globale puisqu'il ne tourne qu'une fois.
-    orig_forward = pipe.transformer.forward
-
-    def patched_forward(*args, **kwargs):
-        with sdpa_kernel(SDPBackend.EFFICIENT_ATTENTION):
-            return orig_forward(*args, **kwargs)
-
-    pipe.transformer.forward = patched_forward
+    patch_attention(pipe)
 
     generator = torch.Generator(device="cuda").manual_seed(SEED)
 

@@ -11,3 +11,7 @@ timestamp	style	fichier	lora	seed	prompt
 20260818_003457	curly_femme	results/kontext_curly_femme_20260818_003457.png	-	non fixee	This is a girl. Change her hairstyle to well-defined curly hair, spiral ringlet curls, not frizzy, not afro-textured, medium length, neatly styled.
 20260818_004353	brushing_frange_femme	results/kontext_brushing_frange_femme_20260818_004353.png	-	seed=0	This is a woman. Change her hairstyle to a long, sleek blowout past the shoulders with soft bangs and gentle loose waves, neatly styled.
 20260818_004749	curly_femme	results/kontext_curly_femme_20260818_004749.png	-	seed=0	This is a girl. Change her hairstyle to well-defined curly hair, spiral ringlet curls, not frizzy, not afro-textured, medium length, neatly styled.
+20260818_200117	attache	results/kontext_attache_20260818_200117.png	-	seed=0	This is a man. Tie his hair back into a low, smooth ponytail.
+20260818_200415	frange	results/kontext_frange_20260818_200415.png	-	seed=0	This is a man. Change his hairstyle to add a straight fringe across the forehead.
+20260818_200711	raie_milieu	results/kontext_raie_milieu_20260818_200711.png	-	seed=0	This is a man. Change his hairstyle to a clean center part, straight and sleek.
+20260818_201035	attache	results/kontext_attache_20260818_201035.png	-	seed=0	This is a man. Change his hairstyle to hair tied back into a low, smooth ponytail, neatly styled.
