@@ -1,23 +1,13 @@
+/* Tokens de couleur/police repris de assets/brand.css (chargé avant ce
+   fichier dans index.html) -> cet écran ne definit plus sa propre palette,
+   pour rester coherent avec le reste du site (accueil/boutique). Ancien
+   theme sombre rose/violet retire (cf. historique git). --panel-2 propre
+   a cet ecran (variante de --bg-alt pour les champs de saisie). */
 :root {
-  --bg: #16151c;
-  --panel: #201f28;
-  --panel-2: #2a2933;
-  --text: #f2f0f5;
-  --muted: #a8a5b5;
-  --accent: #e88fb0;
-  --accent-2: #b98cf2;
-  --error: #f2795c;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
+  --panel-2: var(--bg-alt);
 }
 
 body {
-  margin: 0;
-  background: linear-gradient(160deg, #1c1a24, #100f14 70%);
-  color: var(--text);
   min-height: 100vh;
 }
 
@@ -51,12 +41,13 @@ main.centered {
 .card {
   width: 100%;
   background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 18px;
   padding: 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 30px rgba(35, 24, 15, 0.08);
   text-align: center;
 }
 
@@ -81,7 +72,7 @@ main.centered {
 
 .field input {
   background: var(--panel-2);
-  border: 1px solid #ffffff20;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
   color: var(--text);
@@ -95,38 +86,8 @@ main.centered {
   margin: 0;
 }
 
-.btn {
-  border: none;
-  border-radius: 999px;
-  padding: 12px 20px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: var(--panel-2);
-  color: var(--text);
-  transition: transform 0.1s ease, opacity 0.2s ease;
-  text-decoration: none;
-  text-align: center;
-  display: inline-block;
-}
-
-.btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.btn.primary {
-  background: linear-gradient(120deg, var(--accent), var(--accent-2));
-  color: #201626;
-}
-
-.btn.wide {
-  width: 100%;
-}
+/* .btn/.btn.primary/.btn.wide : voir assets/brand.css, partagé avec le
+   reste du site (plus de style de bouton propre à cet écran). */
 
 /* écran photo, repris de webapp/capture.js */
 .stage-wrap {
@@ -196,7 +157,7 @@ main.centered {
 
 .option-card {
   background: var(--panel);
-  border: 2px solid transparent;
+  border: 2px solid var(--line);
   border-radius: 14px;
   padding: 14px 8px;
   color: var(--text);
@@ -264,7 +225,7 @@ main.centered {
   aspect-ratio: 3/4;
   object-fit: cover;
   background: var(--panel);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 30px rgba(35, 24, 15, 0.12);
 }
 
 .status {

@@ -75,6 +75,13 @@ async function loadCatalog() {
   return state.catalog;
 }
 
+// Lien profond depuis une fiche produit de la boutique (site/assets/site.js
+// génère des liens "/essayer/?style=<id>") -> pré-sélectionne cette forme
+// à l'arrivée sur l'écran de choix, sans empêcher d'en choisir une autre.
+// Ne joue qu'une fois (mis à null après usage) pour ne pas re-forcer le
+// choix si le testeur revient sur cet écran via "Changer de forme".
+let preselectStyleId = new URLSearchParams(location.search).get("style");
+
 // --- écran 2 : prise de photo (repris de webapp/capture.js) -----------
 
 const els2 = {
@@ -167,13 +174,20 @@ function renderChoiceScreen() {
   els3.generateBtn.hidden = true;
 
   els3.styleGrid.innerHTML = "";
+  let preselectBtn = null;
   for (const style of state.catalog.styles) {
     const btn = document.createElement("button");
     btn.className = "option-card";
     btn.textContent = style.label;
     btn.addEventListener("click", () => selectStyle(style, btn));
     els3.styleGrid.appendChild(btn);
+    if (style.id === preselectStyleId) preselectBtn = { style, btn };
   }
+
+  if (preselectBtn) {
+    selectStyle(preselectBtn.style, preselectBtn.btn);
+  }
+  preselectStyleId = null;
 }
 
 function selectStyle(style, btn) {

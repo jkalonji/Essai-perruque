@@ -1,0 +1,411 @@
+/* Design partagé du site (accueil, boutique, essai virtuel) — inspiré du
+   minimalisme épuré de rains.com et de l'élégance feutrée de gemmyo.com :
+   fond ivoire, larges respirations, une seule couleur d'accent (caramel,
+   ton cheveux plutôt qu'une couleur "mode" arbitraire), petites majuscules
+   espacées pour la nav/les labels. Chargé en premier sur toutes les pages
+   (site/*.html ET cabine/index.html) -> cabine/style.css n'a plus qu'à
+   réutiliser ces variables au lieu de définir sa propre palette (repris de
+   son ancien thème sombre rose/violet, remplacé ici).
+
+   Polices système uniquement (pas de Google Fonts / CDN) : cohérent avec le
+   README ("tout tourne en local", aucune requête réseau après le premier
+   lancement de la page) et ça reste un choix esthétique déjà correct pour
+   ce genre d'habillage sobre. */
+
+:root {
+  /* Empêche le "force dark" heuristique de Chrome (repeint les couleurs
+     d'une page qui ne se déclare pas explicitement -> repérable via
+     getComputedStyle renvoyant des couleurs sombres alors que
+     prefers-color-scheme reste "false") : le site n'a qu'un seul thème,
+     clair, assumé. */
+  color-scheme: light;
+  --bg: #f7f2ea;
+  --bg-alt: #efe6d8;
+  --panel: #fffdfa;
+  --line: #e3d8c6;
+  --text: #23180f;
+  --muted: #7c6d5c;
+  --accent: #a9744a;
+  --accent-2: #d3a463;
+  --accent-ink: #fffaf3;
+  --error: #a8402a;
+
+  --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  margin: 0;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* --- nav partagée -------------------------------------------------- */
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px clamp(20px, 5vw, 64px);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-nav__wordmark {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.site-nav__links {
+  display: flex;
+  gap: clamp(14px, 3vw, 32px);
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.site-nav__links a {
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding-bottom: 4px;
+  border-bottom: 1px solid transparent;
+}
+
+.site-nav__links a:hover,
+.site-nav__links a.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* --- footer partagé -------------------------------------------------- */
+
+.site-footer {
+  padding: 28px clamp(20px, 5vw, 64px) 40px;
+  border-top: 1px solid var(--line);
+  margin-top: 64px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --- boutons/cartes réutilisés partout -------------------------------- */
+
+.btn {
+  border: 1px solid var(--text);
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text);
+  text-decoration: none;
+  text-align: center;
+  display: inline-block;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--text);
+  color: var(--accent-ink);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--text);
+  color: var(--accent-ink);
+  border-color: var(--text);
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn.wide {
+  width: 100%;
+}
+
+.section {
+  padding: clamp(40px, 8vw, 96px) clamp(20px, 5vw, 64px);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--text);
+  color: var(--accent-ink);
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 50;
+  white-space: nowrap;
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --- grille produits (accueil en teaser, boutique en entier) ---------- */
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: clamp(20px, 3vw, 36px);
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.product-card__media {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--bg-alt);
+}
+
+.product-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.swatch {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px;
+}
+
+.swatch span {
+  color: var(--accent-ink);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.swatch--curly {
+  background: repeating-radial-gradient(circle at 30% 30%, #3a2416, #3a2416 4px, #4d3320 4px, #4d3320 8px);
+}
+
+.swatch--braids {
+  background: repeating-linear-gradient(115deg, #241610, #241610 8px, #3a2517 8px, #3a2517 16px);
+}
+
+.swatch--kinky {
+  background: radial-gradient(circle at 25% 20%, #4a2f1c, #1c110a 75%);
+}
+
+.product-card__body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.product-card__body h3 {
+  font-size: 1.15rem;
+}
+
+.product-card__desc {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+  min-height: 2.6em;
+}
+
+.product-card__price {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 4px 0 10px;
+}
+
+.product-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.product-card__actions .btn {
+  flex: 1;
+  white-space: nowrap;
+}
+
+/* --- accueil : hero + colonnes valeurs --------------------------------- */
+
+.hero {
+  padding: clamp(56px, 12vw, 140px) clamp(20px, 5vw, 64px);
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--bg-alt), var(--bg) 70%);
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  max-width: 16ch;
+  margin: 14px auto 18px;
+  line-height: 1.15;
+}
+
+.hero p {
+  color: var(--muted);
+  max-width: 46ch;
+  margin: 0 auto 30px;
+  font-size: 1rem;
+}
+
+.hero .btn-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.value-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 32px;
+  text-align: left;
+}
+
+.value-cols h3 {
+  font-size: 1.05rem;
+  margin: 10px 0 8px;
+}
+
+.value-cols p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.section-head h2 {
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+}
+
+.banner {
+  background: var(--text);
+  color: var(--accent-ink);
+  text-align: center;
+  padding: clamp(48px, 9vw, 96px) 24px;
+}
+
+.banner h2 {
+  color: var(--accent-ink);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  max-width: 24ch;
+  margin: 0 auto 14px;
+}
+
+.banner p {
+  color: #e9ddcb;
+  max-width: 44ch;
+  margin: 0 auto 26px;
+}
+
+.banner .btn {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+
+.banner .btn:hover {
+  background: var(--accent-ink);
+  color: var(--text);
+}
+
+/* --- boutique : filtres texture (décoratifs, filtrage client) --------- */
+
+.filter-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.filter-chip {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.filter-chip.active {
+  border-color: var(--text);
+  color: var(--text);
+  background: var(--bg-alt);
+}

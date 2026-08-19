@@ -1,8 +1,10 @@
 """
-Serveur HTTP persistant pour la "cabine coiffure IA" (voir
-specs/cabine-coiffure-ia.html) : sert l'UI mobile dans cabine/, et garde le
-pipeline FLUX.1-Kontext-dev charge en memoire pour toute la session au lieu
-de le recharger a chaque photo comme le fait run_kontext.py en CLI.
+Serveur HTTP persistant du site "Meches" : sert le site vitrine/boutique de
+demonstration (site/) sur "/" et "/boutique", et l'outil d'essai virtuel
+("cabine coiffure IA", voir specs/cabine-coiffure-ia.html, cabine/) sous
+l'onglet "/essayer/" -> garde le pipeline FLUX.1-Kontext-dev charge en
+memoire pour toute la session au lieu de le recharger a chaque photo comme
+le fait run_kontext.py en CLI.
 
 Lancer (depuis la racine du depot, avec le venv dedie a FLUX) :
     ".venv/Scripts/python.exe" cabine_server.py
@@ -37,11 +39,12 @@ from collections import deque
 
 import torch
 from diffusers.utils import load_image
-from flask import Flask, jsonify, request, send_from_directory, abort
+from flask import Flask, jsonify, request, send_from_directory, abort, redirect
 
 import run_kontext as kontext
 
-FRONTEND_DIR = "cabine"
+SITE_DIR = "site"
+CABINE_DIR = "cabine"
 SESSIONS_DIR = "server_sessions"
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 
@@ -247,12 +250,37 @@ app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 Mo, large marge pour u
 
 @app.route("/")
 def index():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    return send_from_directory(SITE_DIR, "index.html")
 
 
-@app.route("/<path:filename>")
-def static_files(filename):
-    return send_from_directory(FRONTEND_DIR, filename)
+@app.route("/boutique")
+def boutique():
+    return send_from_directory(SITE_DIR, "boutique.html")
+
+
+@app.route("/assets/<path:filename>")
+def site_assets(filename):
+    return send_from_directory(os.path.join(SITE_DIR, "assets"), filename)
+
+
+# Onglet "Essayer des meches" : l'outil FLUX existant (cabine/), monte sous
+# /essayer/ plutot qu'a la racine. Slash final obligatoire pour que les
+# chemins relatifs de cabine/index.html (app.js, style.css) se resolvent
+# sous /essayer/ au lieu de la racine du site -> on redirige /essayer (sans
+# slash) au cas ou un lien oublierait le slash.
+@app.route("/essayer")
+def essayer_redirect():
+    return redirect("/essayer/")
+
+
+@app.route("/essayer/")
+def essayer_index():
+    return send_from_directory(CABINE_DIR, "index.html")
+
+
+@app.route("/essayer/<path:filename>")
+def essayer_static(filename):
+    return send_from_directory(CABINE_DIR, filename)
 
 
 @app.route("/api/styles")

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boutique — Mèches</title>
+  <link rel="stylesheet" href="/assets/brand.css" />
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a class="site-nav__wordmark" href="/">Mèches</a>
+    <ul class="site-nav__links">
+      <li><a href="/">Accueil</a></li>
+      <li><a href="/boutique" class="active">Boutique</a></li>
+      <li><a href="/essayer/">Essayer des mèches</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero" style="padding-bottom: 40px;">
+    <p class="eyebrow">Catalogue</p>
+    <h1 style="font-size: clamp(1.8rem, 4vw, 2.6rem);">Toutes les textures</h1>
+    <p>Filtre par texture, puis essaie virtuellement avant d'ajouter au panier.</p>
+  </header>
+
+  <section class="section">
+    <div class="filter-row" id="filterRow"></div>
+    <div class="product-grid" id="productGrid"></div>
+  </section>
+
+  <footer class="site-footer">
+    <span>© 2026 Mèches — catalogue de démonstration.</span>
+    <span>Site vitrine, achat non disponible pour l'instant.</span>
+  </footer>
+
+  <script src="/assets/site.js"></script>
+  <script>
+    let ALL_PRODUCTS = [];
+
+    function renderGrid(products) {
+      document.getElementById("productGrid").innerHTML = products.map(productCardHTML).join("");
+    }
+
+    function renderFilters(products) {
+      const textures = ["Toutes", ...new Set(products.map((p) => p.texture))];
+      const row = document.getElementById("filterRow");
+      row.innerHTML = textures
+        .map((t, i) => `<button class="filter-chip${i === 0 ? " active" : ""}" data-texture="${t}">${t}</button>`)
+        .join("");
+      row.addEventListener("click", (e) => {
+        const chip = e.target.closest(".filter-chip");
+        if (!chip) return;
+        [...row.children].forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        const texture = chip.dataset.texture;
+        renderGrid(texture === "Toutes" ? ALL_PRODUCTS : ALL_PRODUCTS.filter((p) => p.texture === texture));
+      });
+    }
+
+    loadCatalog().then((products) => {
+      ALL_PRODUCTS = products;
+      renderFilters(products);
+      renderGrid(products);
+    });
+  </script>
+</body>
+</html>

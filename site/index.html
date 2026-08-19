@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mèches — cheveux naturels, essayés avant d'être achetés</title>
+  <link rel="stylesheet" href="/assets/brand.css" />
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a class="site-nav__wordmark" href="/">Mèches</a>
+    <ul class="site-nav__links">
+      <li><a href="/" class="active">Accueil</a></li>
+      <li><a href="/boutique">Boutique</a></li>
+      <li><a href="/essayer/">Essayer des mèches</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero">
+    <p class="eyebrow">Cheveux 100&nbsp;% naturels</p>
+    <h1>Vois le rendu sur ton propre visage avant de commander.</h1>
+    <p>
+      Une sélection resserrée de textures pensées pour cheveux afro et
+      métissés — et un essayage virtuel par IA pour ne plus acheter à
+      l'aveugle.
+    </p>
+    <div class="btn-row">
+      <a class="btn primary" href="/boutique">Voir la boutique</a>
+      <a class="btn" href="/essayer/">Essayer virtuellement →</a>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>La sélection</h2>
+      <a class="btn" href="/boutique">Tout voir</a>
+    </div>
+    <div class="product-grid" id="teaserGrid"></div>
+  </section>
+
+  <section class="section">
+    <div class="value-cols">
+      <div>
+        <p class="eyebrow">01</p>
+        <h3>Cheveux naturels sourcés</h3>
+        <p>Chaque référence est choisie pour sa tenue dans le temps, pas juste sa photo en vitrine.</p>
+      </div>
+      <div>
+        <p class="eyebrow">02</p>
+        <h3>Essayage par IA, sur ta photo</h3>
+        <p>Avant d'acheter, vois la forme posée sur ton propre visage — généré en local, jamais partagé ailleurs.</p>
+      </div>
+      <div>
+        <p class="eyebrow">03</p>
+        <h3>Pensé pour nos textures</h3>
+        <p>Lisse, ondulée, bouclée, tressée, afro — un raccord pensé pour les cheveux africains et métissés.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="banner">
+    <h2>Pas sûre du rendu ? Essaie-le d'abord.</h2>
+    <p>Prends-toi en photo, choisis une forme, et regarde le résultat avant de choisir tes mèches.</p>
+    <a class="btn" href="/essayer/">Essayer des mèches →</a>
+  </section>
+
+  <footer class="site-footer">
+    <span>© 2026 Mèches — catalogue de démonstration.</span>
+    <span>Site vitrine, achat non disponible pour l'instant.</span>
+  </footer>
+
+  <script src="/assets/site.js"></script>
+  <script>
+    loadCatalog().then((products) => {
+      document.getElementById("teaserGrid").innerHTML = products
+        .slice(0, 3)
+        .map(productCardHTML)
+        .join("");
+    });
+  </script>
+</body>
+</html>

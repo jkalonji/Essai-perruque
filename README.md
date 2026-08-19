@@ -177,22 +177,37 @@ retrouver quel prompt exact (et quel seed) a produit quelle image sans
 rouvrir le log de chaque run. Fichier texte à colonnes, lisible avec
 `cat`/`less`/un tableur.
 
-## Cabine coiffure IA — partager l'essai par lien (téléphone)
+## Site "Mèches" — vitrine + essai virtuel par lien (téléphone)
 
-`run_kontext.py` est un script CLI : pas de serveur, pas de lien à partager.
-`cabine_server.py` en fait un petit service web qui garde le pipeline FLUX
-chargé en mémoire pour toute la session (au lieu de le recharger à chaque
-photo) et sert une interface mobile en 5 écrans (`cabine/`) : mot de passe →
-photo caméra → choix d'une forme (5 cartes : brushing/attaché/frange/raie au
-milieu/bouclé) → attente (avec compte à rebours) → résultat. Une seule
-couleur (noir) est appliquée automatiquement en fin de génération — un
-essai de "couleur dans le prompt FLUX" (blond/brun choisis par le testeur)
-a été écarté : ça marchait pour certaines combinaisons forme+couleur mais en
-faisait dériver d'autres vers un visage complètement différent (même piège
-que documenté plus bas pour la forme seule). Le post-traitement Lab
-(`recolor_hair.py`) reste la seule méthode de couleur : il ne touche jamais
-au visage, seulement au masque cheveux détecté. Spec complète :
-`specs/cabine-coiffure-ia.html`.
+`cabine_server.py` sert un petit site complet à trois onglets, tous servis
+par le même serveur Flask (pas de build, pas de dépendance externe) :
+
+- **Accueil** (`/`, `site/index.html`) et **Boutique** (`/boutique`,
+  `site/boutique.html`) — vitrine e-commerce de démonstration (catalogue de
+  mèches factice, `site/assets/catalog.json`, 3 produits avec vraies photos
+  issues de `webapp/assets/wigs/` + 3 en aperçu texturé) inspirée du
+  minimalisme de rains.com et gemmyo.com. **Pas de vrai panier/paiement** —
+  "Ajouter au panier" affiche un message honnête plutôt que de faire
+  semblant de fonctionner. À remplacer par un vrai catalogue/backend si le
+  projet passe en boutique fonctionnelle.
+- **Essayer des mèches** (`/essayer/`, `cabine/`) — l'outil d'essai virtuel
+  par IA (ex-"cabine coiffure IA") : mot de passe → photo caméra → choix
+  d'une forme (5 cartes : brushing/attaché/frange/raie au milieu/bouclé) →
+  attente (avec compte à rebours) → résultat. Une seule couleur (noir) est
+  appliquée automatiquement en fin de génération — un essai de "couleur
+  dans le prompt FLUX" (blond/brun choisis par le testeur) a été écarté :
+  ça marchait pour certaines combinaisons forme+couleur mais en faisait
+  dériver d'autres vers un visage complètement différent (même piège que
+  documenté plus bas pour la forme seule). Le post-traitement Lab
+  (`recolor_hair.py`) reste la seule méthode de couleur : il ne touche
+  jamais au visage, seulement au masque cheveux détecté. Chaque fiche
+  produit de la boutique pointe vers cet onglet avec la forme correspondante
+  pré-sélectionnée (`/essayer/?style=...`). Spec complète de l'outil :
+  `specs/cabine-coiffure-ia.html`.
+
+Le style commun (nav, typographie, boutons) vit dans `site/assets/brand.css`,
+chargé sur les trois surfaces — `cabine/style.css` ne définit plus sa propre
+palette, il réutilise les variables de `brand.css`.
 
 ### Lancer en local
 
@@ -200,10 +215,12 @@ au visage, seulement au masque cheveux détecté. Spec complète :
 ".venv/Scripts/python.exe" cabine_server.py
 ```
 
-Ouvre <http://localhost:8080>. Mot de passe par défaut `coiffure2026`
-(surcharger avec la variable d'environnement `CABINE_PASSWORD`). Une seule
-génération à la fois : les requêtes suivantes patientent en file — pas de
-gestion de plusieurs testeurs simultanés (hors scope, voir le spec §09).
+Ouvre <http://localhost:8080> (accueil du site). Mot de passe par défaut de
+l'onglet "Essayer des mèches" : `coiffure2026` (surcharger avec la variable
+d'environnement `CABINE_PASSWORD`) — l'accueil et la boutique sont publics,
+seul l'essai virtuel (coûteux en GPU) est protégé. Une seule génération à la
+fois : les requêtes suivantes patientent en file — pas de gestion de
+plusieurs testeurs simultanés (hors scope, voir le spec §09).
 
 La couleur est un post-traitement `recolor_hair.py` exécuté en sous-processus
 avec le **Python système** (celui qui a `cv2`/`mediapipe`), pas le `.venv`
@@ -241,7 +258,7 @@ lien meurt dès que le tunnel ou le PC s'arrête.
 | Juste tester une **couleur/mèches** sur ta vraie coiffure actuelle | `recolor_hair.py` |
 | Tester une **frange**, rendu rapide mais approximatif | `add_fringe.py` |
 | Tester une **coiffure décrite en texte libre**, rendu le plus réaliste (GPU requis) | `run_kontext.py` |
-| Partager l'essai de coiffure IA **par lien**, depuis un téléphone | `cabine_server.py` + `cabine/` |
+| Voir le site vitrine/boutique (démo) et l'essai virtuel **par lien**, depuis un téléphone | `cabine_server.py` + `site/` + `cabine/` |
 
 ## Limites (c'est un prototype simple)
 

@@ -1,0 +1,59 @@
+[
+  {
+    "id": "lisse-brune",
+    "name": "Lisse Brésilienne",
+    "texture": "Lisse",
+    "price": 189,
+    "desc": "Cheveux 100% naturels, brillance soutenue, tient un brushing sans frisotter.",
+    "image": "assets/products/lisse-brune.png",
+    "essai_style": "raie_milieu"
+  },
+  {
+    "id": "ondule-brun",
+    "name": "Ondulé Loose Wave",
+    "texture": "Ondulée",
+    "price": 209,
+    "desc": "Vague souple et naturelle, du volume sans avoir à repasser tous les matins.",
+    "image": "assets/products/ondule-brun.png",
+    "essai_style": "brushing_frange"
+  },
+  {
+    "id": "lisse-blond-miel",
+    "name": "Lisse Blond Miel",
+    "texture": "Lisse",
+    "price": 219,
+    "desc": "Blond chaud lumineux, base la plus demandée pour un changement radical.",
+    "image": "assets/products/lisse-blond-miel.png",
+    "essai_style": "frange"
+  },
+  {
+    "id": "boucle-definie",
+    "name": "Bouclée Définie",
+    "texture": "Bouclée",
+    "price": 199,
+    "desc": "Boucles élastiques bien dessinées, ni frisottantes ni relâchées.",
+    "image": null,
+    "swatch": "curly",
+    "essai_style": "curly"
+  },
+  {
+    "id": "box-braids",
+    "name": "Box Braids Pré-tressées",
+    "texture": "Tressée",
+    "price": 159,
+    "desc": "Prêtes à poser, protègent la repousse naturelle plusieurs semaines.",
+    "image": null,
+    "swatch": "braids",
+    "essai_style": "attache"
+  },
+  {
+    "id": "kinky-curly",
+    "name": "Kinky Curly Naturel",
+    "texture": "Afro",
+    "price": 229,
+    "desc": "Texture proche de l'afro naturel, pour un raccord invisible à la racine.",
+    "image": null,
+    "swatch": "kinky",
+    "essai_style": "curly"
+  }
+]
