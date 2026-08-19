@@ -171,6 +171,22 @@ main.centered {
   background: var(--panel-2);
 }
 
+.option-card--soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.option-card__soon {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .section-label {
   color: var(--muted);
   font-size: 0.8rem;

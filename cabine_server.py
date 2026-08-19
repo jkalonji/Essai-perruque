@@ -93,14 +93,21 @@ RECOLOR_PYTHON = resolve_recolor_python()
 # brushing_frange_femme restent des styles d'exploration CLI (genre
 # different de l'utilisateur, hors sujet pour une cabine d'essai) -> pas
 # exposes ici.
+# Seul "Brushing" est ouvert au public pour le moment (qualite jugee
+# suffisante) ; les autres formes restent dans le catalogue -> l'UI les
+# affiche desactivees avec "Bientot disponible" (cabine/app.js) plutot que
+# de les retirer, pour montrer ce qui arrive sans laisser generer un rendu
+# pas encore satisfaisant. Verifie aussi cote serveur dans /api/generate,
+# au cas ou un appel contournerait l'UI.
 APP_STYLES = [
-    {"id": "brushing_frange", "label": "Brushing"},
-    {"id": "attache", "label": "Attaché"},
-    {"id": "frange", "label": "Frange"},
-    {"id": "raie_milieu", "label": "Raie au milieu"},
-    {"id": "curly", "label": "Bouclé"},
+    {"id": "brushing_frange", "label": "Brushing", "available": True},
+    {"id": "attache", "label": "Attaché", "available": False},
+    {"id": "frange", "label": "Frange", "available": False},
+    {"id": "raie_milieu", "label": "Raie au milieu", "available": False},
+    {"id": "curly", "label": "Bouclé", "available": False},
 ]
 APP_STYLE_IDS = {s["id"] for s in APP_STYLES}
+AVAILABLE_STYLE_IDS = {s["id"] for s in APP_STYLES if s["available"]}
 
 # Une seule couleur proposee au testeur (decision produit : plus la peine de
 # choisir puisqu'il n'y a qu'une option) -> appliquee automatiquement en fin
@@ -305,6 +312,8 @@ def api_generate():
     style = request.form.get("style")
     if style not in APP_STYLE_IDS:
         return jsonify(error=f"coiffure inconnue: {style!r}"), 400
+    if style not in AVAILABLE_STYLE_IDS:
+        return jsonify(error=f"coiffure pas encore disponible: {style!r}"), 400
 
     image_file = request.files.get("image")
     if not image_file:

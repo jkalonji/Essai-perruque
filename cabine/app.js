@@ -178,10 +178,19 @@ function renderChoiceScreen() {
   for (const style of state.catalog.styles) {
     const btn = document.createElement("button");
     btn.className = "option-card";
-    btn.textContent = style.label;
-    btn.addEventListener("click", () => selectStyle(style, btn));
+    if (style.available) {
+      btn.textContent = style.label;
+      btn.addEventListener("click", () => selectStyle(style, btn));
+      if (style.id === preselectStyleId) preselectBtn = { style, btn };
+    } else {
+      // Forme pas encore ouverte au public (cf. APP_STYLES dans
+      // cabine_server.py) -> visible dans le catalogue mais desactivee,
+      // plutot que retiree, pour montrer ce qui arrive.
+      btn.classList.add("option-card--soon");
+      btn.disabled = true;
+      btn.innerHTML = `${style.label}<span class="option-card__soon">Bientôt disponible</span>`;
+    }
     els3.styleGrid.appendChild(btn);
-    if (style.id === preselectStyleId) preselectBtn = { style, btn };
   }
 
   if (preselectBtn) {
