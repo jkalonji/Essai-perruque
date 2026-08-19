@@ -24,10 +24,9 @@ function showScreen(name) {
 
 const state = {
   password: "",
-  catalog: null, // { styles, colors } depuis /api/styles
+  catalog: null, // { styles } depuis /api/styles
   photoBlob: null,
   style: null,
-  color: null,
   jobId: null,
   afterUrl: null,
 };
@@ -152,21 +151,19 @@ els2.usePhotoBtn.addEventListener("click", async () => {
   renderChoiceScreen();
 });
 
-// --- écran 3 : choix forme puis couleur --------------------------------
+// --- écran 3 : choix de la forme ----------------------------------------
+// Une seule couleur cote serveur (APP_COLOR dans cabine_server.py,
+// appliquee automatiquement) -> plus d'etape de choix de couleur ici.
 
 const els3 = {
   subtitle: document.getElementById("choiceSubtitle"),
   styleGrid: document.getElementById("styleGrid"),
-  colorStep: document.getElementById("colorStep"),
-  colorGrid: document.getElementById("colorGrid"),
   generateBtn: document.getElementById("generateBtn"),
 };
 
 function renderChoiceScreen() {
   state.style = null;
-  state.color = null;
   els3.subtitle.textContent = "Quelle forme veux-tu essayer ?";
-  els3.colorStep.hidden = true;
   els3.generateBtn.hidden = true;
 
   els3.styleGrid.innerHTML = "";
@@ -177,36 +174,11 @@ function renderChoiceScreen() {
     btn.addEventListener("click", () => selectStyle(style, btn));
     els3.styleGrid.appendChild(btn);
   }
-
-  els3.colorGrid.innerHTML = "";
-  for (const color of state.catalog.colors) {
-    const btn = document.createElement("button");
-    btn.className = "option-card";
-    btn.textContent = color.label;
-    btn.addEventListener("click", () => selectColor(color, btn));
-    els3.colorGrid.appendChild(btn);
-  }
 }
 
 function selectStyle(style, btn) {
   state.style = style;
-  state.color = null;
   [...els3.styleGrid.children].forEach((c) => c.classList.remove("active"));
-  btn.classList.add("active");
-  [...els3.colorGrid.children].forEach((c) => c.classList.remove("active"));
-
-  if (style.needs_color) {
-    els3.colorStep.hidden = false;
-    els3.generateBtn.hidden = true;
-  } else {
-    els3.colorStep.hidden = true;
-    els3.generateBtn.hidden = false;
-  }
-}
-
-function selectColor(color, btn) {
-  state.color = color;
-  [...els3.colorGrid.children].forEach((c) => c.classList.remove("active"));
   btn.classList.add("active");
   els3.generateBtn.hidden = false;
 }
@@ -304,65 +276,21 @@ async function pollStatus() {
 
 const els5 = {
   after: document.getElementById("resultAfter"),
-  colorGrid: document.getElementById("resultColorGrid"),
   downloadBtn: document.getElementById("downloadBtn"),
   newStyleBtn: document.getElementById("newStyleBtn"),
-  status: document.getElementById("resultStatus"),
 };
 
 async function showResult() {
-  const shapeUrl = `/api/result/${state.jobId}/shape.png`;
-  setAfterImage(shapeUrl);
-
-  els5.colorGrid.innerHTML = "";
-  if (state.style.needs_color) {
-    els5.colorGrid.hidden = false;
-    for (const color of state.catalog.colors) {
-      const btn = document.createElement("button");
-      btn.className = "option-card";
-      btn.textContent = color.label;
-      btn.addEventListener("click", () => applyColor(color, btn));
-      els5.colorGrid.appendChild(btn);
-    }
-  } else {
-    els5.colorGrid.hidden = true;
-  }
-
+  // Couleur deja appliquee cote serveur (APP_COLOR, cabine_server.py) avant
+  // que le job ne passe "done" -> ce que /api/result renvoie est deja le
+  // rendu final, plus besoin d'un second appel ici.
+  setAfterImage(`/api/result/${state.jobId}/shape.png`);
   showScreen("result");
 }
 
 function setAfterImage(url) {
   els5.after.src = url;
   els5.downloadBtn.href = url;
-}
-
-async function applyColor(color, btn) {
-  [...els5.colorGrid.children].forEach((c) => c.classList.remove("active"));
-  btn.classList.add("active");
-  els5.status.classList.remove("error");
-  els5.status.textContent = "Application de la couleur…";
-  try {
-    const res = await fetch(`/api/recolor/${state.jobId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color: color.id }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "erreur serveur");
-    }
-    const blob = await res.blob();
-    setAfterImage(URL.createObjectURL(blob));
-    els5.status.textContent = "";
-  } catch (e) {
-    console.error(e);
-    // classe .error (rouge, bien visible) plutot que le gris discret par
-    // defaut de .status -> l'echec passait inapercu sous les boutons
-    // (bug remonte : "les couleurs ne s'appliquent pas" sans que l'erreur
-    // affichee n'ait ete vue).
-    els5.status.classList.add("error");
-    els5.status.textContent = "❌ Échec de la couleur : " + e.message;
-  }
 }
 
 els5.newStyleBtn.addEventListener("click", () => {

@@ -184,8 +184,15 @@ rouvrir le log de chaque run. Fichier texte à colonnes, lisible avec
 chargé en mémoire pour toute la session (au lieu de le recharger à chaque
 photo) et sert une interface mobile en 5 écrans (`cabine/`) : mot de passe →
 photo caméra → choix d'une forme (5 cartes : brushing/attaché/frange/raie au
-milieu/bouclé) puis d'une couleur (3 pastilles) → attente (avec compte à
-rebours) → résultat. Spec complète : `specs/cabine-coiffure-ia.html`.
+milieu/bouclé) → attente (avec compte à rebours) → résultat. Une seule
+couleur (noir) est appliquée automatiquement en fin de génération — un
+essai de "couleur dans le prompt FLUX" (blond/brun choisis par le testeur)
+a été écarté : ça marchait pour certaines combinaisons forme+couleur mais en
+faisait dériver d'autres vers un visage complètement différent (même piège
+que documenté plus bas pour la forme seule). Le post-traitement Lab
+(`recolor_hair.py`) reste la seule méthode de couleur : il ne touche jamais
+au visage, seulement au masque cheveux détecté. Spec complète :
+`specs/cabine-coiffure-ia.html`.
 
 ### Lancer en local
 

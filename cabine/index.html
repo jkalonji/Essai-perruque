@@ -61,7 +61,7 @@
     </main>
   </section>
 
-  <!-- écran 3 : choix forme puis couleur -->
+  <!-- écran 3 : choix de la forme -->
   <section id="screen-choice" class="screen" hidden>
     <header>
       <h1>✂️ Choisis une coiffure</h1>
@@ -69,10 +69,6 @@
     </header>
     <main class="centered">
       <div class="option-grid" id="styleGrid"></div>
-      <div id="colorStep" hidden>
-        <p class="section-label">Puis une couleur</p>
-        <div class="option-grid" id="colorGrid"></div>
-      </div>
       <button id="generateBtn" class="btn primary wide" hidden>Générer →</button>
     </main>
   </section>
@@ -104,12 +100,10 @@
       <figure class="result-figure">
         <img id="resultAfter" alt="Résultat" />
       </figure>
-      <div class="option-grid" id="resultColorGrid" hidden></div>
       <div class="stage-actions">
         <a id="downloadBtn" class="btn primary" download="cabine_coiffure.png">💾 Télécharger</a>
         <button id="newStyleBtn" class="btn">✂️ Changer de forme</button>
       </div>
-      <p id="resultStatus" class="status"></p>
     </main>
   </section>
 

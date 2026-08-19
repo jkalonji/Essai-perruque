@@ -60,10 +60,18 @@ LOOKS = [
 # generee par FLUX. "lighten" monte avec la clarte visee car la photo source
 # part de cheveux noirs.
 FULL_COLORS = [
+    {"id": "noir", "label": "Noir", "color_bgr": (12, 12, 14), "lighten": 2, "density": 0.92},
     {"id": "brun_fonce", "label": "Brun foncé", "color_bgr": (24, 32, 46), "lighten": 15, "density": 0.92},
     {"id": "brun", "label": "Brun", "color_bgr": (33, 55, 92), "lighten": 40, "density": 0.92},
     {"id": "blond", "label": "Blond", "color_bgr": (90, 150, 197), "lighten": 95, "density": 0.92},
 ]
+# "noir" est la seule couleur exposee dans la cabine (cabine_server.py) :
+# decision prise apres comparaison visuelle de "brun_fonce" vs un vrai noir
+# neutre sur un rendu FLUX reel (session server_sessions/6c3538cce5c1) -> les
+# deux fonctionnent (pipeline Lab, ne touche jamais au visage), "noir" rend
+# une teinte neutre sans le leger cote chaud de brun_fonce, et correspond au
+# rendu par defaut le plus courant pour des mèches. brun_fonce/brun/blond
+# restent utilisables en CLI manuel (cf. README "Tester une couleur").
 
 ALL_LOOKS = {look["id"]: look for look in LOOKS + FULL_COLORS}
 

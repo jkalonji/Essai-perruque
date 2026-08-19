@@ -14,9 +14,11 @@ La forme est mise en file (JobQueue plus bas) et traitee une a la fois par
 un thread dedie qui garde le pipeline FLUX en memoire (le rechargement du
 transformer FP8 depuis son cache local ne prend que quelques secondes, mais
 recharger tout le pipeline a chaque requete comme run_kontext.py le fait en
-CLI serait inutilement lent pour un usage serveur). La couleur est un
-second temps quasi instantane (post-traitement Lab, recolor_hair.py) qui ne
-passe jamais par le GPU -> traite en synchrone dans la requete HTTP.
+CLI serait inutilement lent pour un usage serveur). Une seule couleur est
+proposee (APP_COLOR, "noir") -> appliquee automatiquement juste apres la
+forme, dans le meme job (post-traitement Lab quasi instantane, recolor_hair.py,
+qui ne passe jamais par le GPU), plutot que de faire choisir une couleur au
+testeur apres coup.
 
 recolor_hair.py depend de cv2/mediapipe, installes dans l'environnement
 Python SYSTEME (pas le .venv dedie a torch/diffusers/FLUX, cf. README) ->
@@ -89,20 +91,23 @@ RECOLOR_PYTHON = resolve_recolor_python()
 # different de l'utilisateur, hors sujet pour une cabine d'essai) -> pas
 # exposes ici.
 APP_STYLES = [
-    {"id": "brushing_frange", "label": "Brushing", "needs_color": True},
-    {"id": "attache", "label": "Attaché", "needs_color": True},
-    {"id": "frange", "label": "Frange", "needs_color": True},
-    {"id": "raie_milieu", "label": "Raie au milieu", "needs_color": True},
-    {"id": "curly", "label": "Bouclé", "needs_color": True},
+    {"id": "brushing_frange", "label": "Brushing"},
+    {"id": "attache", "label": "Attaché"},
+    {"id": "frange", "label": "Frange"},
+    {"id": "raie_milieu", "label": "Raie au milieu"},
+    {"id": "curly", "label": "Bouclé"},
 ]
 APP_STYLE_IDS = {s["id"] for s in APP_STYLES}
 
-COLORS = [
-    {"id": "brun_fonce", "label": "Brun foncé"},
-    {"id": "brun", "label": "Brun"},
-    {"id": "blond", "label": "Blond"},
-]
-COLOR_IDS = {c["id"] for c in COLORS}
+# Une seule couleur proposee au testeur (decision produit : plus la peine de
+# choisir puisqu'il n'y a qu'une option) -> appliquee automatiquement en fin
+# de generation, cf. worker_loop. "brun"/"blond" restaient trop sujets a
+# derive d'identite quand testes directement dans le prompt FLUX (essai
+# ecarte, voir historique) ; "noir" reste le post-traitement Lab existant
+# (recolor_hair.py), qui ne touche jamais au visage. Choix entre brun_fonce
+# et noir tranche par comparaison visuelle -> voir commentaire dans
+# recolor_hair.py au-dessus de FULL_COLORS.
+APP_COLOR = "noir"
 
 # Estimation grossiere pour l'ecran d'attente (~2-4 min annonces dans le
 # spec) -> une fois le pipeline chauffe, une generation tourne autour de
@@ -126,6 +131,30 @@ JOBS = {}
 JOBS_LOCK = threading.Lock()
 QUEUE = deque()
 QUEUE_COND = threading.Condition()
+
+
+def apply_color(shape_path):
+    """Lance recolor_hair.py (post-traitement Lab, APP_COLOR fixe) sur la
+    forme fraichement generee par FLUX, et renvoie le chemin du resultat
+    colore. Leve une exception si le sous-processus echoue -> le job passe
+    en "error" (worker_loop), pas de resultat noir/silencieux.
+    """
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    proc = subprocess.run(
+        [RECOLOR_PYTHON, "recolor_hair.py", shape_path, APP_COLOR],
+        capture_output=True, text=True, cwd=repo_dir,
+    )
+    if proc.stdout.strip():
+        print("-> recolor_hair.py:", proc.stdout.strip())
+    if proc.returncode != 0:
+        print(f"!! echec recolor_hair.py (interpreteur={RECOLOR_PYTHON!r}, code={proc.returncode}):")
+        print(proc.stderr[-2000:])
+        raise RuntimeError(f"echec du post-traitement couleur : {proc.stderr.strip()[-300:]}")
+
+    out_path = os.path.join(os.path.dirname(shape_path), f"shape_{APP_COLOR}.jpg")
+    if not os.path.exists(out_path):
+        raise RuntimeError("fichier de sortie introuvable apres post-traitement couleur")
+    return out_path
 
 
 def enqueue(job):
@@ -195,8 +224,10 @@ def worker_loop():
                 num_inference_steps=kontext.NUM_STEPS, generator=generator,
             ).images[0]
 
-            job.shape_path = os.path.join(SESSIONS_DIR, job.id, "shape.png")
-            result.save(job.shape_path)
+            shape_path = os.path.join(SESSIONS_DIR, job.id, "shape.png")
+            result.save(shape_path)
+
+            job.shape_path = apply_color(shape_path)
             job.status = "done"
             print("-> termine:", job.shape_path)
         except Exception as e:
@@ -226,7 +257,7 @@ def static_files(filename):
 
 @app.route("/api/styles")
 def api_styles():
-    return jsonify(styles=APP_STYLES, colors=COLORS)
+    return jsonify(styles=APP_STYLES)
 
 
 @app.route("/api/check_password", methods=["POST"])
@@ -299,44 +330,6 @@ def api_result_shape(job_id):
     if job is None or job.status != "done":
         abort(404)
     return send_from_directory(os.path.dirname(job.shape_path), os.path.basename(job.shape_path))
-
-
-@app.route("/api/recolor/<job_id>", methods=["POST"])
-def api_recolor(job_id):
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-    if job is None or job.status != "done":
-        abort(404)
-
-    color = (request.get_json(silent=True) or {}).get("color")
-    if color not in COLOR_IDS:
-        return jsonify(error=f"couleur inconnue: {color!r}"), 400
-
-    # recolor_hair.py ecrit son resultat a cote de l'image source, nomme
-    # d'apres son prefixe -> pour "shape.png" ca donne "shape_<color>.jpg".
-    # cwd fixe explicitement sur le dossier du script : le sous-processus ne
-    # doit pas dependre du repertoire courant du process serveur (peut
-    # varier selon comment/d'ou cabine_server.py a ete lance).
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
-    proc = subprocess.run(
-        [RECOLOR_PYTHON, "recolor_hair.py", job.shape_path, color],
-        capture_output=True, text=True, cwd=repo_dir,
-    )
-    # log systematique (pas seulement en cas d'echec) -> inclut le
-    # garde-fou "masque de cheveux suspect" de recolor_hair.py, utile pour
-    # comprendre un rendu couleur silencieusement rate sans erreur HTTP.
-    if proc.stdout.strip():
-        print("-> recolor_hair.py:", proc.stdout.strip())
-    if proc.returncode != 0:
-        print(f"!! echec recolor_hair.py (interpreteur={RECOLOR_PYTHON!r}, code={proc.returncode}):")
-        print(proc.stderr[-2000:])
-        return jsonify(error=f"echec du post-traitement couleur : {proc.stderr.strip()[-300:]}"), 500
-
-    out_path = os.path.join(os.path.dirname(job.shape_path), f"shape_{color}.jpg")
-    if not os.path.exists(out_path):
-        return jsonify(error="fichier de sortie introuvable apres post-traitement"), 500
-
-    return send_from_directory(os.path.dirname(out_path), os.path.basename(out_path))
 
 
 if __name__ == "__main__":

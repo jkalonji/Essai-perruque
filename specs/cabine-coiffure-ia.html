@@ -424,12 +424,12 @@
         <span class="screen-desc">Caméra frontale (<code>facingMode: "user"</code>), cadre-guide pour un visage dégagé et bien éclairé — même logique que <code>webapp/capture.html</code>, adaptée mobile.</span>
       </li>
       <li>
-        <span class="screen-title">Choix de la forme, puis de la couleur</span>
-        <span class="screen-desc">5 cartes de forme (brushing / attaché / frange / raie au milieu / bouclé, §07). Un second choix apparaît ensuite pour toutes : 3 pastilles de couleur (brun foncé / brun / blond).</span>
+        <span class="screen-title">Choix de la forme</span>
+        <span class="screen-desc">5 cartes de forme (brushing / attaché / frange / raie au milieu / bouclé, §07). Pas de choix de couleur : une seule couleur (noir) est appliquée automatiquement en fin de génération — voir §07 pour l'essai "couleur dans le prompt" écarté.</span>
       </li>
       <li>
         <span class="screen-title">Attente</span>
-        <span class="screen-desc">Message honnête sur la durée réelle (« ~2 à 4 minutes, ça travaille vraiment ») plutôt qu'un spinner muet qui laisse croire à un plantage. C'est le seul temps d'attente : c'est la forme qui passe par FLUX, pas la couleur.</span>
+        <span class="screen-desc">Message honnête sur la durée réelle (« ~2 à 4 minutes, ça travaille vraiment ») plutôt qu'un spinner muet qui laisse croire à un plantage. C'est le seul temps d'attente : la forme (FLUX) puis la couleur (post-traitement Lab, quasi instantané) sont enchaînées dans le même job.</span>
       </li>
       <li>
         <span class="screen-title">Résultat</span>
@@ -572,7 +572,8 @@
     <h2>Prochaines étapes</h2>
     <ol>
       <li><span class="status ok">fait</span> — Écrire les 3 nouveaux prompts de forme (<code>attache</code>, <code>frange</code>, <code>raie_milieu</code>) et les valider sur GPU (voir §07 : <code>frange</code> validé, <code>attache</code>/<code>raie_milieu</code> partiels)</li>
-      <li><span class="status ok">fait</span> — Adapter <code>recolor_hair.py</code> pour tourner sur une image générée par FLUX : accepte un chemin d'image en argument, écrit à côté de la source, 3 couleurs pleines (<code>brun_fonce</code>/<code>brun</code>/<code>blond</code>) ajoutées</li>
+      <li><span class="status ok">fait</span> — Adapter <code>recolor_hair.py</code> pour tourner sur une image générée par FLUX : accepte un chemin d'image en argument, écrit à côté de la source, couleurs pleines (<code>noir</code>/<code>brun_fonce</code>/<code>brun</code>/<code>blond</code>) ajoutées</li>
+      <li><span class="status ok">fait</span> — Essai "couleur dans le prompt FLUX" (au lieu du post-traitement) écarté : marchait pour une combinaison forme+couleur testée mais faisait dériver une autre vers un visage différent — même risque que documenté pour la forme seule (README, section run_kontext.py). La cabine s'en tient au post-traitement Lab, une seule couleur (noir), appliquée automatiquement</li>
       <li><span class="status ok">fait</span> — <code>cabine_server.py</code> : serveur Flask qui garde le pipeline FLUX chargé, file d'attente une génération à la fois, swap de LoRA automatique si un style avec LoRA est exposé (aucun des 5 actuels n'en utilise depuis le remplacement de <code>broccoli</code> par <code>curly</code>)</li>
       <li><span class="status ok">fait</span> — <code>cabine/</code> : les 5 écrans mobiles (§05), caméra reprise de <code>webapp/capture.js</code> mais envoyant la photo au serveur</li>
       <li><span class="status ok">fait</span> — file d'attente (une génération à la fois) intégrée à <code>cabine_server.py</code></li>
