@@ -50,13 +50,13 @@
     "essai_style": "attache"
   },
   {
-    "id": "kinky-curly",
-    "name": "Kinky Curly Naturel",
-    "texture": "Afro",
+    "id": "lightly-curly",
+    "name": "Lightly Curly",
+    "texture": "Légèrement bouclée",
     "price": 229,
-    "desc": "Texture proche de l'afro naturel, pour un raccord invisible à la racine.",
-    "image": "assets/products/kinky-curly.jpg",
-    "credit": "Photo : Heyy Kazz / Pexels",
+    "desc": "Boucles souples et légères, un rendu naturel décontracté à coiffer sans effort.",
+    "image": "assets/products/lightly-curly.jpg",
+    "credit": "Photo : Andrea Piacquadio / Pexels",
     "essai_style": "curly"
   }
 ]
