@@ -5,7 +5,8 @@
     "texture": "Lisse",
     "price": 189,
     "desc": "Cheveux 100% naturels, brillance soutenue, tient un brushing sans frisotter.",
-    "image": "assets/products/lisse-brune.png",
+    "image": "assets/products/lisse-brune.jpg",
+    "credit": "Photo : Alina Skazka / Pexels",
     "essai_style": "raie_milieu"
   },
   {
@@ -14,7 +15,8 @@
     "texture": "Ondulée",
     "price": 209,
     "desc": "Vague souple et naturelle, du volume sans avoir à repasser tous les matins.",
-    "image": "assets/products/ondule-brun.png",
+    "image": "assets/products/ondule-brun.jpg",
+    "credit": "Photo : Alina Skazka / Pexels",
     "essai_style": "brushing_frange"
   },
   {
@@ -23,7 +25,8 @@
     "texture": "Lisse",
     "price": 219,
     "desc": "Blond chaud lumineux, base la plus demandée pour un changement radical.",
-    "image": "assets/products/lisse-blond-miel.png",
+    "image": "assets/products/lisse-blond-miel.jpg",
+    "credit": "Photo : Alina Skazka / Pexels",
     "essai_style": "frange"
   },
   {
@@ -32,8 +35,8 @@
     "texture": "Bouclée",
     "price": 199,
     "desc": "Boucles élastiques bien dessinées, ni frisottantes ni relâchées.",
-    "image": null,
-    "swatch": "curly",
+    "image": "assets/products/boucle-definie.jpg",
+    "credit": "Photo : Tima Miroshnichenko / Pexels",
     "essai_style": "curly"
   },
   {
@@ -42,8 +45,8 @@
     "texture": "Tressée",
     "price": 159,
     "desc": "Prêtes à poser, protègent la repousse naturelle plusieurs semaines.",
-    "image": null,
-    "swatch": "braids",
+    "image": "assets/products/box-braids.jpg",
+    "credit": "Photo : Malama Mushitu / Pexels",
     "essai_style": "attache"
   },
   {
@@ -52,8 +55,8 @@
     "texture": "Afro",
     "price": 229,
     "desc": "Texture proche de l'afro naturel, pour un raccord invisible à la racine.",
-    "image": null,
-    "swatch": "kinky",
+    "image": "assets/products/kinky-curly.jpg",
+    "credit": "Photo : Heyy Kazz / Pexels",
     "essai_style": "curly"
   }
 ]

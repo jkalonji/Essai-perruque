@@ -292,6 +292,13 @@ h1, h2, h3 {
   white-space: nowrap;
 }
 
+.product-card__credit {
+  margin: 10px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
 /* --- accueil : hero + colonnes valeurs --------------------------------- */
 
 .hero {

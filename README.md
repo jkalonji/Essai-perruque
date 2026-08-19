@@ -184,12 +184,16 @@ par le même serveur Flask (pas de build, pas de dépendance externe) :
 
 - **Accueil** (`/`, `site/index.html`) et **Boutique** (`/boutique`,
   `site/boutique.html`) — vitrine e-commerce de démonstration (catalogue de
-  mèches factice, `site/assets/catalog.json`, 3 produits avec vraies photos
-  issues de `webapp/assets/wigs/` + 3 en aperçu texturé) inspirée du
-  minimalisme de rains.com et gemmyo.com. **Pas de vrai panier/paiement** —
+  mèches factice, `site/assets/catalog.json`, 6 produits) inspirée du
+  minimalisme de rains.com et gemmyo.com. Photos issues de banques **libres
+  de droits, usage commercial autorisé** (Pexels License — pas d'obligation
+  d'attribution, créditées quand même sur chaque fiche produit, cf. champ
+  `credit` du catalogue) : ni les photos personnelles fournies par
+  l'utilisateur, ni des images glanées sans licence claire sur le web n'ont
+  été utilisées pour ce catalogue. **Pas de vrai panier/paiement** —
   "Ajouter au panier" affiche un message honnête plutôt que de faire
-  semblant de fonctionner. À remplacer par un vrai catalogue/backend si le
-  projet passe en boutique fonctionnelle.
+  semblant de fonctionner. À remplacer par un vrai catalogue/backend (et de
+  vraies photos produit) si le projet passe en boutique fonctionnelle.
 - **Essayer des mèches** (`/essayer/`, `cabine/`) — l'outil d'essai virtuel
   par IA (ex-"cabine coiffure IA") : mot de passe → photo caméra → choix
   d'une forme (5 cartes : brushing/attaché/frange/raie au milieu/bouclé) →

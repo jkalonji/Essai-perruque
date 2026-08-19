@@ -15,11 +15,16 @@ function productImageHTML(product) {
   }
   // Pas encore de photo pour ce produit démo -> un aplat texturé distinct
   // par type plutôt qu'une fausse photo, pour rester honnête sur ce qui est
-  // un vrai visuel (les 3 produits photographiés) et ce qui ne l'est pas.
+  // un vrai visuel et ce qui ne l'est pas.
   return `<div class="swatch swatch--${product.swatch}"><span>Aperçu à venir</span></div>`;
 }
 
 function productCardHTML(product) {
+  // Photos issues de banques libres de droits (Pexels, usage commercial
+  // autorisé, cf. site/assets/catalog.json "credit") -> pas de vraies
+  // photos produit (catalogue de démo, cf. décision produit), créditées ici
+  // en petit plutôt que cachées, même si la licence Pexels ne l'exige pas.
+  const credit = product.credit ? `<p class="product-card__credit">${product.credit}</p>` : "";
   return `
     <article class="product-card">
       <div class="product-card__media">${productImageHTML(product)}</div>
@@ -32,6 +37,7 @@ function productCardHTML(product) {
           <a class="btn" href="/essayer/?style=${product.essai_style}">Essayer virtuellement</a>
           <button class="btn primary" data-add-to-cart="${product.name}">Ajouter au panier</button>
         </div>
+        ${credit}
       </div>
     </article>
   `;
